@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.BizLineMapper">
+  <sql id="columns">id, biz_code, biz_name, owner, status, remark, create_time, update_time, is_deleted, row_version</sql>
+  <select id="selectById" resultType="com.pricing.management.infrastructure.dataobject.BizLineDO">SELECT <include refid="columns"/> FROM biz_line WHERE id=#{id} AND is_deleted=0</select>
+  <select id="selectByBizCode" resultType="com.pricing.management.infrastructure.dataobject.BizLineDO">SELECT <include refid="columns"/> FROM biz_line WHERE biz_code=#{bizCode} AND is_deleted=0</select>
+  <insert id="insert">INSERT INTO biz_line (id,biz_code,biz_name,owner,status,remark) VALUES (#{id},#{bizCode},#{bizName},#{owner},#{status},#{remark})</insert>
+  <update id="updateById">UPDATE biz_line SET biz_name=#{bizName},owner=#{owner},status=#{status},remark=#{remark},row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+  <update id="logicalDelete">UPDATE biz_line SET is_deleted=1,row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+</mapper>

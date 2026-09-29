@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.PricingSchemeTemplateMapper">
+  <sql id="columns">id,scheme_id,template_type,template_code,template_version,slot_bindings,create_time,update_time,is_deleted,row_version</sql>
+  <select id="selectById" resultType="com.pricing.management.infrastructure.dataobject.PricingSchemeTemplateDO">SELECT <include refid="columns"/> FROM pricing_scheme_template WHERE id=#{id} AND is_deleted=0</select>
+  <select id="selectBySchemeId" resultType="com.pricing.management.infrastructure.dataobject.PricingSchemeTemplateDO">SELECT <include refid="columns"/> FROM pricing_scheme_template WHERE scheme_id=#{schemeId} AND is_deleted=0 ORDER BY template_type</select>
+  <insert id="insert">INSERT INTO pricing_scheme_template (id,scheme_id,template_type,template_code,template_version,slot_bindings) VALUES (#{id},#{schemeId},#{templateType},#{templateCode},#{templateVersion},#{slotBindings})</insert>
+  <update id="updateById">UPDATE pricing_scheme_template t SET t.template_code=#{templateCode},t.template_version=#{templateVersion},t.slot_bindings=#{slotBindings},t.row_version=t.row_version+1 WHERE t.id=#{id} AND t.row_version=#{rowVersion} AND t.is_deleted=0 AND EXISTS (SELECT 1 FROM pricing_scheme s WHERE s.id=t.scheme_id AND s.status='DRAFT' AND s.is_deleted=0)</update>
+  <update id="logicalDelete">UPDATE pricing_scheme_template t SET t.is_deleted=1,t.row_version=t.row_version+1 WHERE t.id=#{id} AND t.row_version=#{rowVersion} AND t.is_deleted=0 AND EXISTS (SELECT 1 FROM pricing_scheme s WHERE s.id=t.scheme_id AND s.status='DRAFT' AND s.is_deleted=0)</update>
+</mapper>

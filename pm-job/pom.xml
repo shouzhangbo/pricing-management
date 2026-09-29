@@ -1,0 +1,9 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent><groupId>com.pricing.management</groupId><artifactId>pricing-management</artifactId><version>0.1.0-SNAPSHOT</version></parent>
+    <artifactId>pm-job</artifactId>
+    <dependencies>
+        <dependency><groupId>com.pricing.management</groupId><artifactId>pm-application</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId></dependency>
+    </dependencies>
+</project>

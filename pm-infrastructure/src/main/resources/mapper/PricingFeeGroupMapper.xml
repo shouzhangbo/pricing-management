@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.PricingFeeGroupMapper">
+  <sql id="columns">id,group_no,group_name,biz_code,scene_code,group_desc,status,create_time,update_time,is_deleted,row_version</sql>
+  <select id="selectById" resultType="com.pricing.management.infrastructure.dataobject.PricingFeeGroupDO">SELECT <include refid="columns"/> FROM pricing_fee_group WHERE id=#{id} AND is_deleted=0</select>
+  <select id="selectByGroupNo" resultType="com.pricing.management.infrastructure.dataobject.PricingFeeGroupDO">SELECT <include refid="columns"/> FROM pricing_fee_group WHERE group_no=#{groupNo} AND is_deleted=0</select>
+  <select id="selectByScene" resultType="com.pricing.management.infrastructure.dataobject.PricingFeeGroupDO">SELECT <include refid="columns"/> FROM pricing_fee_group WHERE biz_code=#{bizCode} AND scene_code=#{sceneCode} AND is_deleted=0 ORDER BY group_no</select>
+  <select id="selectByBizCode" resultType="com.pricing.management.infrastructure.dataobject.PricingFeeGroupDO">SELECT <include refid="columns"/> FROM pricing_fee_group WHERE biz_code=#{bizCode} AND is_deleted=0 ORDER BY group_no</select>
+  <insert id="insert">INSERT INTO pricing_fee_group (id,group_no,group_name,biz_code,scene_code,group_desc,status) VALUES (#{id},#{groupNo},#{groupName},#{bizCode},#{sceneCode},#{groupDesc},#{status})</insert>
+  <update id="updateById">UPDATE pricing_fee_group SET group_name=#{groupName},group_desc=#{groupDesc},status=#{status},row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+  <update id="logicalDelete">UPDATE pricing_fee_group SET is_deleted=1,row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+</mapper>

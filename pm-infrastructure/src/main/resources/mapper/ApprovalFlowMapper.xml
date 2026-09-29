@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.ApprovalFlowMapper">
+  <sql id="columns">id,biz_type,group_id,scheme_ids,action,operator,opinion,create_time,update_time,is_deleted,row_version</sql>
+  <select id="selectById" resultType="com.pricing.management.infrastructure.dataobject.ApprovalFlowDO">SELECT <include refid="columns"/> FROM approval_flow WHERE id=#{id} AND is_deleted=0</select>
+  <select id="selectByGroupId" resultType="com.pricing.management.infrastructure.dataobject.ApprovalFlowDO">SELECT <include refid="columns"/> FROM approval_flow WHERE group_id=#{groupId} AND is_deleted=0 ORDER BY create_time DESC</select>
+  <insert id="insert">INSERT INTO approval_flow (id,biz_type,group_id,scheme_ids,action,operator,opinion) VALUES (#{id},#{bizType},#{groupId},#{schemeIds},#{action},#{operator},#{opinion})</insert>
+  <update id="updateById">UPDATE approval_flow SET action=#{action},opinion=#{opinion},row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+  <update id="logicalDelete">UPDATE approval_flow SET is_deleted=1,row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+</mapper>

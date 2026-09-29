@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.PricingFactorMapper">
+  <sql id="columns">id,factor_code,factor_name,category,value_type,unit,dict_json,validate_rule,status,create_time,update_time,is_deleted,row_version</sql>
+  <select id="selectById" resultType="com.pricing.management.infrastructure.dataobject.PricingFactorDO">SELECT <include refid="columns"/> FROM pricing_factor WHERE id=#{id} AND is_deleted=0</select>
+  <select id="selectByFactorCode" resultType="com.pricing.management.infrastructure.dataobject.PricingFactorDO">SELECT <include refid="columns"/> FROM pricing_factor WHERE factor_code=#{factorCode} AND is_deleted=0</select>
+  <select id="selectEnabled" resultType="com.pricing.management.infrastructure.dataobject.PricingFactorDO">SELECT <include refid="columns"/> FROM pricing_factor WHERE status='ENABLED' AND is_deleted=0 ORDER BY factor_code</select>
+  <insert id="insert">INSERT INTO pricing_factor (id,factor_code,factor_name,category,value_type,unit,dict_json,validate_rule,status) VALUES (#{id},#{factorCode},#{factorName},#{category},#{valueType},#{unit},#{dictJson},#{validateRule},#{status})</insert>
+  <update id="updateById">UPDATE pricing_factor SET factor_name=#{factorName},category=#{category},value_type=#{valueType},unit=#{unit},dict_json=#{dictJson},validate_rule=#{validateRule},status=#{status},row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+  <update id="logicalDelete">UPDATE pricing_factor SET is_deleted=1,row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+</mapper>

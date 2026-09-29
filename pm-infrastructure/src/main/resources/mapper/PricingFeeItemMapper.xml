@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.PricingFeeItemMapper">
+  <sql id="columns">id,group_id,fee_code,fee_name,seq_no,is_required,fee_desc,status,create_time,update_time,is_deleted,row_version</sql>
+  <select id="selectById" resultType="com.pricing.management.infrastructure.dataobject.PricingFeeItemDO">SELECT <include refid="columns"/> FROM pricing_fee_item WHERE id=#{id} AND is_deleted=0</select>
+  <select id="selectByGroupId" resultType="com.pricing.management.infrastructure.dataobject.PricingFeeItemDO">SELECT <include refid="columns"/> FROM pricing_fee_item WHERE group_id=#{groupId} AND is_deleted=0 ORDER BY seq_no</select>
+  <insert id="insert">INSERT INTO pricing_fee_item (id,group_id,fee_code,fee_name,seq_no,is_required,fee_desc,status) VALUES (#{id},#{groupId},#{feeCode},#{feeName},#{seqNo},#{isRequired},#{feeDesc},#{status})</insert>
+  <update id="updateById">UPDATE pricing_fee_item SET fee_name=#{feeName},seq_no=#{seqNo},is_required=#{isRequired},fee_desc=#{feeDesc},status=#{status},row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+  <update id="logicalDelete">UPDATE pricing_fee_item SET is_deleted=1,row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+</mapper>

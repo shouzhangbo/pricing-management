@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.PricingSchemeFactorValueMapper">
+  <sql id="columns">id,scheme_id,factor_code,value_json,create_time,update_time,is_deleted,row_version</sql>
+  <select id="selectById" resultType="com.pricing.management.infrastructure.dataobject.PricingSchemeFactorValueDO">SELECT <include refid="columns"/> FROM pricing_scheme_factor_value WHERE id=#{id} AND is_deleted=0</select>
+  <select id="selectBySchemeId" resultType="com.pricing.management.infrastructure.dataobject.PricingSchemeFactorValueDO">SELECT <include refid="columns"/> FROM pricing_scheme_factor_value WHERE scheme_id=#{schemeId} AND is_deleted=0 ORDER BY factor_code</select>
+  <insert id="insert">INSERT INTO pricing_scheme_factor_value (id,scheme_id,factor_code,value_json) VALUES (#{id},#{schemeId},#{factorCode},#{valueJson})</insert>
+  <update id="updateById">UPDATE pricing_scheme_factor_value v SET v.value_json=#{valueJson},v.row_version=v.row_version+1 WHERE v.id=#{id} AND v.row_version=#{rowVersion} AND v.is_deleted=0 AND EXISTS (SELECT 1 FROM pricing_scheme s WHERE s.id=v.scheme_id AND s.status='DRAFT' AND s.is_deleted=0)</update>
+  <update id="logicalDelete">UPDATE pricing_scheme_factor_value v SET v.is_deleted=1,v.row_version=v.row_version+1 WHERE v.id=#{id} AND v.row_version=#{rowVersion} AND v.is_deleted=0 AND EXISTS (SELECT 1 FROM pricing_scheme s WHERE s.id=v.scheme_id AND s.status='DRAFT' AND s.is_deleted=0)</update>
+</mapper>

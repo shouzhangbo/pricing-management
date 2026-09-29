@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.PricingSceneMapper">
+  <sql id="columns">id,biz_code,scene_code,scene_name,scene_desc,factor_scope,status,create_time,update_time,is_deleted,row_version</sql>
+  <select id="selectById" resultType="com.pricing.management.infrastructure.dataobject.PricingSceneDO">SELECT <include refid="columns"/> FROM pricing_scene WHERE id=#{id} AND is_deleted=0</select>
+  <select id="selectByBizCode" resultType="com.pricing.management.infrastructure.dataobject.PricingSceneDO">SELECT <include refid="columns"/> FROM pricing_scene WHERE biz_code=#{bizCode} AND is_deleted=0 <if test="status != null">AND status=#{status}</if> ORDER BY scene_code</select>
+  <insert id="insert">INSERT INTO pricing_scene (id,biz_code,scene_code,scene_name,scene_desc,factor_scope,status) VALUES (#{id},#{bizCode},#{sceneCode},#{sceneName},#{sceneDesc},#{factorScope},#{status})</insert>
+  <update id="updateById">UPDATE pricing_scene SET scene_name=#{sceneName},scene_desc=#{sceneDesc},factor_scope=#{factorScope},status=#{status},row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+  <update id="logicalDelete">UPDATE pricing_scene SET is_deleted=1,row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+</mapper>

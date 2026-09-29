@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.12</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.pricing.management</groupId>
+    <artifactId>pricing-management</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>pricing-management</name>
+    <description>配送费定价管理平台</description>
+
+    <modules>
+        <module>pm-common</module>
+        <module>pm-api</module>
+        <module>pm-domain</module>
+        <module>pm-application</module>
+        <module>pm-infrastructure</module>
+        <module>pm-delivery</module>
+        <module>pm-job</module>
+        <module>pm-admin</module>
+    </modules>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.release>21</maven.compiler.release>
+        <mybatis-spring-boot.version>3.0.4</mybatis-spring-boot.version>
+        <dubbo.version>3.2.15</dubbo.version>
+        <redisson.version>3.35.0</redisson.version>
+        <nacos.version>2.3.2</nacos.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.dubbo</groupId>
+                <artifactId>dubbo-bom</artifactId>
+                <version>${dubbo.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

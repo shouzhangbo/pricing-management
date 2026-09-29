@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: pricing-management
+  profiles:
+    default: test
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+mybatis:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+dubbo:
+  application:
+    name: ${spring.application.name}
+  protocol:
+    name: dubbo
+    port: -1
+  scan:
+    base-packages: com.pricing.management.delivery
+  consumer:
+    check: false

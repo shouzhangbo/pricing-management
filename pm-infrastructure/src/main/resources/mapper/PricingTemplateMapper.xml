@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.PricingTemplateMapper">
+  <sql id="columns">id,template_code,template_name,template_type,version_no,content_json,pair_code,outputs_json,status,create_time,update_time,is_deleted,row_version</sql>
+  <select id="selectById" resultType="com.pricing.management.infrastructure.dataobject.PricingTemplateDO">SELECT <include refid="columns"/> FROM pricing_template WHERE id=#{id} AND is_deleted=0</select>
+  <select id="selectByCodeAndVersion" resultType="com.pricing.management.infrastructure.dataobject.PricingTemplateDO">SELECT <include refid="columns"/> FROM pricing_template WHERE template_code=#{templateCode} AND version_no=#{versionNo} AND is_deleted=0</select>
+  <select id="selectEnabledByType" resultType="com.pricing.management.infrastructure.dataobject.PricingTemplateDO">SELECT <include refid="columns"/> FROM pricing_template WHERE template_type=#{templateType} AND status='ENABLED' AND is_deleted=0 ORDER BY template_code,version_no DESC</select>
+  <insert id="insert">INSERT INTO pricing_template (id,template_code,template_name,template_type,version_no,content_json,pair_code,outputs_json,status) VALUES (#{id},#{templateCode},#{templateName},#{templateType},#{versionNo},#{contentJson},#{pairCode},#{outputsJson},#{status})</insert>
+  <update id="updateById">UPDATE pricing_template SET template_name=#{templateName},pair_code=#{pairCode},status=#{status},row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+  <update id="logicalDelete">UPDATE pricing_template SET is_deleted=1,row_version=row_version+1 WHERE id=#{id} AND row_version=#{rowVersion} AND is_deleted=0</update>
+</mapper>

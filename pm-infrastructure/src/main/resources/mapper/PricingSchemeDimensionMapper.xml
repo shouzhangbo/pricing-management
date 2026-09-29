@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.PricingSchemeDimensionMapper">
+  <sql id="columns">id,scheme_id,start_time,end_time,dim_code,dim_values,match_mode,create_time,update_time,is_deleted,row_version</sql>
+  <select id="selectById" resultType="com.pricing.management.infrastructure.dataobject.PricingSchemeDimensionDO">SELECT <include refid="columns"/> FROM pricing_scheme_dimension WHERE id=#{id} AND is_deleted=0</select>
+  <select id="selectBySchemeId" resultType="com.pricing.management.infrastructure.dataobject.PricingSchemeDimensionDO">SELECT <include refid="columns"/> FROM pricing_scheme_dimension WHERE scheme_id=#{schemeId} AND is_deleted=0 ORDER BY dim_code</select>
+  <sql id="pageWhere">is_deleted=0 AND scheme_id=#{schemeId}<if test="dimCode != null and dimCode != ''"> AND dim_code=#{dimCode}</if><if test="dimValue != null and dimValue != ''"> AND JSON_CONTAINS(dim_values, JSON_QUOTE(#{dimValue}))</if></sql>
+  <select id="selectPage" resultType="com.pricing.management.infrastructure.dataobject.PricingSchemeDimensionDO">SELECT <include refid="columns"/> FROM pricing_scheme_dimension WHERE <include refid="pageWhere"/> ORDER BY dim_code,id LIMIT #{offset},#{pageSize}</select>
+  <select id="countPage" resultType="long">SELECT COUNT(1) FROM pricing_scheme_dimension WHERE <include refid="pageWhere"/></select>
+  <insert id="insert">INSERT INTO pricing_scheme_dimension (id,scheme_id,start_time,end_time,dim_code,dim_values,match_mode) VALUES (#{id},#{schemeId},#{startTime},#{endTime},#{dimCode},#{dimValues},#{matchMode})</insert>
+  <insert id="insertDraft">INSERT INTO pricing_scheme_dimension (id,scheme_id,start_time,end_time,dim_code,dim_values,match_mode) SELECT #{id},#{schemeId},#{startTime},#{endTime},#{dimCode},#{dimValues},#{matchMode} FROM pricing_scheme WHERE id=#{schemeId} AND status='DRAFT' AND is_deleted=0</insert>
+  <update id="updateById">UPDATE pricing_scheme_dimension d SET d.dim_values=#{dimValues},d.match_mode=#{matchMode},d.row_version=d.row_version+1 WHERE d.id=#{id} AND d.row_version=#{rowVersion} AND d.is_deleted=0 AND EXISTS (SELECT 1 FROM pricing_scheme s WHERE s.id=d.scheme_id AND s.status='DRAFT' AND s.is_deleted=0)</update>
+  <update id="logicalDelete">UPDATE pricing_scheme_dimension d SET d.is_deleted=1,d.row_version=d.row_version+1 WHERE d.id=#{id} AND d.row_version=#{rowVersion} AND d.is_deleted=0 AND EXISTS (SELECT 1 FROM pricing_scheme s WHERE s.id=d.scheme_id AND s.status='DRAFT' AND s.is_deleted=0)</update>
+</mapper>

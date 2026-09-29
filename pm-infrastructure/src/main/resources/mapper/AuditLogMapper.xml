@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pricing.management.infrastructure.mapper.AuditLogMapper">
+  <sql id="columns">id,biz_type,biz_id,action,before_json,after_json,operator,trace_id,operate_time</sql>
+  <insert id="insert">INSERT INTO audit_log (id,biz_type,biz_id,action,before_json,after_json,operator,trace_id,operate_time) VALUES (#{id},#{bizType},#{bizId},#{action},#{beforeJson},#{afterJson},#{operator},#{traceId},#{operateTime})</insert>
+  <select id="selectByBusiness" resultType="com.pricing.management.infrastructure.dataobject.AuditLogDO">SELECT <include refid="columns"/> FROM audit_log WHERE biz_type=#{bizType} AND biz_id=#{bizId} AND operate_time &gt;= #{from} AND operate_time &lt; #{to} ORDER BY operate_time DESC</select>
+</mapper>
