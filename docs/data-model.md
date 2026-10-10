@@ -46,7 +46,7 @@
 
 ### 1.1 时间版本化（本版核心机制，取代 version_no + Bundle）
 
-每个方案（前后端交互键为版本行 `schemeId`）由**多行版本区间**表达历史；同一实例的版本链仅以内部 `root_scheme_id` 关联。
+每条方案记录以 `schemeId` 标识，并通过 `start_time/end_time` 表达自身的生效时间区间与历史状态。
 
 ```
 pricing_scheme 行模型:
@@ -55,7 +55,6 @@ pricing_scheme 行模型:
   (无区间)          版本行C  DRAFT       ← 编辑中, 未发布
 
 不变式(发布事务强制):
-  I1(实例时间线唯一) 同一 root_scheme_id 的 PUBLISHED 区间互不重叠 → 任一时刻一个实例至多一个生效版本
   I4(费用级维度互斥) 同一 fee_id 任意时点并存的各生效实例, 其命中维度集合两两不相交
                      (校验算法见 §6.2; 否则同一维度点会命中多份配置 → 定价不唯一)
   I2 新版本生效即闭合同实例旧版本 end_time(=新版本 start_time), 同事务完成
@@ -180,7 +179,6 @@ CREATE TABLE pricing_fee_item (
 ```sql
 CREATE TABLE pricing_scheme (
   id BIGINT NOT NULL,
-  root_scheme_id BIGINT NOT NULL COMMENT '内部版本链根ID；首版本等于自身ID，不对前端暴露',
   fee_id      BIGINT      NOT NULL COMMENT '所属费用(费用:实例=1:N并存,各绑不同维度; 同费用生效实例受I4互斥约束)',
   scheme_name VARCHAR(128) NOT NULL,
   status      VARCHAR(16) NOT NULL COMMENT 'DRAFT草稿/PENDING_APPROVAL审批中/PUBLISHED已发布(区间定生效)/CANCELLED已作废',
@@ -188,19 +186,16 @@ CREATE TABLE pricing_scheme (
   end_time    DATETIME(3) NULL COMMENT '版本失效时间; NULL=无限期, 被新版本闭合时写入; DRAFT为NULL',
   content_hash CHAR(64) NULL COMMENT '发布时计算: 该版本全量内容(维度+因子赋值+双模板含槽绑定)的canonical序列化SHA-256',
   gray_flag   TINYINT NOT NULL DEFAULT 0 COMMENT '灰度标记(下游自主灰度消费)',
-  rollback_from_id BIGINT NULL COMMENT '若为回滚产生: 来源历史版本行id',
   published_by VARCHAR(64) NULL, published_at DATETIME(3) NULL,
   remark VARCHAR(512),
   -- +公共
   PRIMARY KEY (id),
-  UNIQUE KEY uk_root_scheme_start (root_scheme_id, start_time),
-  KEY idx_root_scheme (root_scheme_id, start_time),
   KEY idx_fee_status (fee_id, status, start_time, end_time) COMMENT '当前/时点生效查询主路径',
   KEY idx_schedule_scan (status, start_time) COMMENT '审批超时/作废清理等辅助job'
 ) COMMENT '定价方案·时间版本行: 一行=一个时间区间版本(取代version_no+Bundle)';
 ```
 
-> 说明：一个费用下可建**多个方案实例**（如杭州实例、上海实例）；首版本的 `root_scheme_id` 等于其 `id`，后续版本继承该内部根 ID。前后端只传每个版本行的 `schemeId`，业务沟通使用 `schemeName`，不再存在方案稳定编号。维度不直接打在费用上，而是由每个实例的 dimension 行声明归属范围。**"费用+具体维度点"（如某城市）→ 唯一命中一个实例的当前生效版本**。下游与审计以 `schemeId + start_time(+ content_hash)` 定位版本。
+> 说明：前后端只传方案记录的 `schemeId`，业务沟通使用 `schemeName`。维度不直接打在费用上，而是由每条方案的 dimension 行声明归属范围。**"费用+具体维度点"（如某城市）→ 唯一命中一个当前生效方案**。下游与审计以 `schemeId + start_time(+ content_hash)` 定位记录。
 
 ### 4.2 pricing_scheme_dimension 方案绑定维度（时间版本化）
 
@@ -340,7 +335,7 @@ WHERE s.status='PUBLISHED' AND s.start_time<=NOW(3) AND (s.end_time>NOW(3) OR s.
 -- 命中具体维度点(如杭州订单): 上结果 join scheme_dimension 取包含该城市值的实例(由I4保证至多一个)
 
 -- ② 时点回放(审计/争议): 把 NOW(3) 换成历史时刻 t
--- ③ 方案历史链: WHERE root_scheme_id=? ORDER BY start_time DESC
+-- ③ 按费用查询历史记录: WHERE fee_id=? ORDER BY start_time DESC
 ```
 
 - 版本区间重叠**无法用 DB 约束表达**，由发布事务串行化保证：事务内按 fee_id 升序对涉及费用逐个 `SELECT ... FOR UPDATE` 锁该费用全部开区间生效行（含兄弟实例）→ 闭旧+转正 → **事务内终态复核 I1/I4（§6.2，基于本组发布完成后的最终生效态，违规即回滚）**；v3.4（D9）起无 Redis 发布锁，DB 行锁独扛；

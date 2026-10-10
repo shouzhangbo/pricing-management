@@ -1,8 +1,5 @@
 package com.pricing.management.application.scheme;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pricing.management.infrastructure.dataobject.*;
 import com.pricing.management.infrastructure.mapper.*;
 import java.util.List;
@@ -12,16 +9,16 @@ import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Draft-only scheme and dimension management. */
+/** Draft-only scheme and dimension management. Edit methods take the Redis lock outside the transaction, which opens in SchemeEditTxService via the proxy. */
 @Service
 public class PricingSchemeApplicationService {
     private final PricingSchemeMapper schemes; private final PricingSchemeDimensionMapper dimensions;
     private final PricingFeeGroupMapper groups; private final PricingFeeItemMapper fees;
-    private final TimeBasedIdGenerator ids; private final RedissonClient redisson; private final ObjectMapper json;
+    private final TimeBasedIdGenerator ids; private final RedissonClient redisson; private final SchemeEditTxService editTx;
     public PricingSchemeApplicationService(PricingSchemeMapper schemes, PricingSchemeDimensionMapper dimensions,
             PricingFeeGroupMapper groups, PricingFeeItemMapper fees, TimeBasedIdGenerator ids,
-            RedissonClient redisson, ObjectMapper json) {
-        this.schemes=schemes; this.dimensions=dimensions; this.groups=groups; this.fees=fees; this.ids=ids; this.redisson=redisson; this.json=json;
+            RedissonClient redisson, SchemeEditTxService editTx) {
+        this.schemes=schemes; this.dimensions=dimensions; this.groups=groups; this.fees=fees; this.ids=ids; this.redisson=redisson; this.editTx=editTx;
     }
     @Transactional public SchemeView create(SchemeCommand.Create c) {
         PricingFeeGroupDO group=groups.selectByGroupNo(c.groupNo());
@@ -29,28 +26,34 @@ public class PricingSchemeApplicationService {
         PricingFeeItemDO fee=fees.selectByGroupId(group.getId()).stream().filter(x->c.feeCode().equals(x.getFeeCode())).findFirst()
                 .orElseThrow(()->new BusinessException("NOT_FOUND","费用项不存在或不属于该费用包"));
         long id=ids.nextId(); PricingSchemeDO s=new PricingSchemeDO();
-        s.setId(id); s.setRootSchemeId(id); s.setFeeId(fee.getId()); s.setSchemeName(c.schemeName()); s.setStatus("DRAFT"); s.setGrayFlag(0); s.setRemark(c.remark());
+        s.setId(id); s.setFeeId(fee.getId()); s.setSchemeName(c.schemeName()); s.setStatus("DRAFT"); s.setGrayFlag(0); s.setRemark(c.remark());
         schemes.insert(s); return schemeView(requireScheme(id));
     }
-    @Transactional public SchemeView update(SchemeCommand.Update c) {
+    public SchemeView update(SchemeCommand.Update c) {
         PricingSchemeDO s=requireScheme(c.schemeId());
-        return locked(s.getId(),()->{ s.setSchemeName(c.schemeName()); s.setRemark(c.remark()); s.setRowVersion(c.rowVersion());
-            if(schemes.updateById(s)!=1) throw new BusinessException("CONFLICT","方案已被修改、已发布或不存在"); return schemeView(requireScheme(s.getId())); });
+        return locked(s.getId(),()->schemeView(editTx.updateScheme(s,c)));
+    }
+    public SchemeView detail(Long schemeId) { return schemeView(requireScheme(schemeId)); }
+    public DeleteResult delete(Long schemeId, Integer rowVersion) {
+        PricingSchemeDO s=requireScheme(schemeId);
+        return locked(s.getId(),()->{ editTx.deleteScheme(s,rowVersion); return new DeleteResult(s.getId()); });
     }
     public PageResult<SchemeView> page(String bizCode,String groupNo,String feeCode,String schemeName,String status,int pageNo,int pageSize) {
         int offset=(pageNo-1)*pageSize; long total=schemes.countPage(bizCode,groupNo,feeCode,schemeName,status);
         return new PageResult<>(total,pageNo,pageSize,schemes.selectPage(bizCode,groupNo,feeCode,schemeName,status,offset,pageSize).stream().map(this::schemeView).toList());
     }
-    @Transactional public DimensionView createDimension(SchemeCommand.CreateDimension c) {
+    public DimensionView createDimension(SchemeCommand.CreateDimension c) {
         PricingSchemeDO s=requireScheme(c.schemeId());
-        return locked(s.getId(),()->{ draft(s); PricingSchemeDimensionDO d=new PricingSchemeDimensionDO();
-            d.setId(ids.nextId()); d.setSchemeId(s.getId()); d.setDimCode(c.dimCode()); d.setDimValues(jsonArray(c.dimValues())); d.setMatchMode(c.matchMode());
-            if(dimensions.insertDraft(d)!=1) throw new BusinessException("CONFLICT","所属方案已发布或不存在"); return dimensionView(requireDimension(d.getId())); });
+        return locked(s.getId(),()->dimensionView(editTx.createSchemeDimension(s,c)));
     }
-    @Transactional public DimensionView updateDimension(SchemeCommand.UpdateDimension c) {
+    public DimensionView updateDimension(SchemeCommand.UpdateDimension c) {
         PricingSchemeDimensionDO d=requireDimension(c.dimensionId());
-        return locked(d.getSchemeId(),()->{ d.setDimValues(jsonArray(c.dimValues())); d.setMatchMode(c.matchMode()); d.setRowVersion(c.rowVersion());
-            if(dimensions.updateById(d)!=1) throw new BusinessException("CONFLICT","维度绑定已被修改、所属方案已发布或不存在"); return dimensionView(requireDimension(d.getId())); });
+        return locked(d.getSchemeId(),()->dimensionView(editTx.updateSchemeDimension(d,c)));
+    }
+    public DimensionView dimensionDetail(Long dimensionId) { return dimensionView(requireDimension(dimensionId)); }
+    public DeleteResult deleteDimension(Long dimensionId, Integer rowVersion) {
+        PricingSchemeDimensionDO d=requireDimension(dimensionId);
+        return locked(d.getSchemeId(),()->{ editTx.deleteSchemeDimension(d,rowVersion); return new DeleteResult(d.getId()); });
     }
     public PageResult<DimensionView> pageDimensions(Long schemeId,String dimCode,String dimValue,int pageNo,int pageSize) {
         requireScheme(schemeId); int offset=(pageNo-1)*pageSize; long total=dimensions.countPage(schemeId,dimCode,dimValue);
@@ -63,8 +66,6 @@ public class PricingSchemeApplicationService {
     }
     private PricingSchemeDO requireScheme(Long id) { PricingSchemeDO s=schemes.selectById(id); if(s==null) throw new BusinessException("NOT_FOUND","方案不存在"); return s; }
     private PricingSchemeDimensionDO requireDimension(Long id) { PricingSchemeDimensionDO d=dimensions.selectById(id); if(d==null) throw new BusinessException("NOT_FOUND","维度绑定不存在"); return d; }
-    private void draft(PricingSchemeDO s) { if(!"DRAFT".equals(s.getStatus())) throw new BusinessException("CONFLICT","仅草稿方案允许编辑维度绑定"); }
-    private String jsonArray(String source) { try { JsonNode n=json.readTree(source); if(n==null||!n.isArray()||n.isEmpty()) throw new BusinessException("PARAM_ERROR","dimValues 必须是非空 JSON 数组"); return json.writeValueAsString(n); } catch(JsonProcessingException e) { throw new BusinessException("PARAM_ERROR","dimValues 必须是合法 JSON 数组"); } }
     private <T> T locked(Long schemeId, Work<T> work) { RLock l=redisson.getLock("pm:lock:edit:"+schemeId); try { if(!l.tryLock(0,TimeUnit.SECONDS)) throw new BusinessException("CONFLICT","方案正在编辑，请稍后重试"); return work.get(); } catch(InterruptedException e) { Thread.currentThread().interrupt(); throw new BusinessException("SYSTEM_ERROR","获取编辑锁被中断"); } finally { if(l.isHeldByCurrentThread()) l.unlock(); } }
     private SchemeView schemeView(PricingSchemeDO s) { return new SchemeView(s.getId(),s.getFeeId(),s.getSchemeName(),s.getStatus(),s.getStartTime(),s.getEndTime(),s.getRemark(),s.getRowVersion()); }
     private DimensionView dimensionView(PricingSchemeDimensionDO d) { return new DimensionView(d.getId(),d.getSchemeId(),d.getDimCode(),d.getDimValues(),d.getMatchMode(),d.getStartTime(),d.getEndTime(),d.getRowVersion()); }

@@ -113,7 +113,6 @@
                                         ▼                  ▼                  ▼
                                 绑定维度 scheme_dimension  因子赋值 factor_value  模板引用 scheme_template
                                 (★同为 start/end 时间版本)  (四形态)             CALC + DISPLAY 成对锁定
-不变式 I1: 同一方案实例(root_scheme_id，仅内部使用)区间不重叠 → 实例任一时刻至多一个生效版本
 不变式 I4: 同一费用并存生效实例的命中维度集合两两互斥 → (费用×维度点×时点) 唯一命中, 无需优先级决胜
 平台级字典: 因子字典 pricing_factor(值类型/校验规则/分类)
             模板库 pricing_template(CALC|DISPLAY, 内容不可变追加)
@@ -162,8 +161,8 @@
 
 ```
 任意时点 t 的生效配置 = WHERE status='PUBLISHED' AND start<=t AND (end>t OR end IS NULL) + 子表装配
-→ 客诉/审计: 按订单时点还原当时价格配置; 按内部 root_scheme_id 看完整版本时间线
-→ 回滚 = 复制历史版本内容为新行发布(rollback_from_id 溯源), 区间链保持线性不倒退
+→ 客诉/审计: 按订单时点还原当时价格配置; 按费用与时间区间查询历史记录
+→ 回滚 = 复制历史内容形成新的待发布记录，审计日志保留操作来源
 → 正确性防线从"事后核查下游"前移到"发布事务内校验 + 不可变历史可验证"(决策 D2 口径)
 ```
 

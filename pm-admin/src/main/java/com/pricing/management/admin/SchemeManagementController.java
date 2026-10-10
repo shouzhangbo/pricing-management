@@ -18,6 +18,12 @@ public class SchemeManagementController {
     @PostMapping("/schemes/{schemeId}") public ApiResponse<SchemeView> update(@PathVariable Long schemeId,@Valid @RequestBody UpdateSchemeRequest r) {
         return ApiResponse.success(service.update(new SchemeCommand.Update(schemeId,r.schemeName(),r.remark(),r.rowVersion())));
     }
+    @GetMapping("/schemes/{schemeId}") public ApiResponse<SchemeView> detail(@PathVariable Long schemeId) {
+        return ApiResponse.success(service.detail(schemeId));
+    }
+    @PostMapping("/schemes/{schemeId}/delete") public ApiResponse<DeleteResult> delete(@PathVariable Long schemeId,@Valid @RequestBody DeleteRequest r) {
+        return ApiResponse.success(service.delete(schemeId,r.rowVersion()));
+    }
     @GetMapping("/schemes") public ApiResponse<PageResult<SchemeView>> page(@RequestParam(required=false) String bizCode,@RequestParam(required=false) String groupNo,
             @RequestParam(required=false) String feeCode,@RequestParam(required=false) String schemeName,@RequestParam(required=false) String status,
             @RequestParam(defaultValue="1") @Min(1) int pageNo,@RequestParam(defaultValue="20") @Min(1) @Max(100) int pageSize) {
@@ -28,6 +34,12 @@ public class SchemeManagementController {
     }
     @PostMapping("/scheme-dimensions/{dimensionId}") public ApiResponse<DimensionView> updateDimension(@PathVariable Long dimensionId,@Valid @RequestBody UpdateDimensionRequest r) {
         return ApiResponse.success(service.updateDimension(new SchemeCommand.UpdateDimension(dimensionId,r.dimValues(),r.matchMode(),r.rowVersion())));
+    }
+    @GetMapping("/scheme-dimensions/{dimensionId}") public ApiResponse<DimensionView> dimensionDetail(@PathVariable Long dimensionId) {
+        return ApiResponse.success(service.dimensionDetail(dimensionId));
+    }
+    @PostMapping("/scheme-dimensions/{dimensionId}/delete") public ApiResponse<DeleteResult> deleteDimension(@PathVariable Long dimensionId,@Valid @RequestBody DeleteRequest r) {
+        return ApiResponse.success(service.deleteDimension(dimensionId,r.rowVersion()));
     }
     @GetMapping("/schemes/{schemeId}/dimensions") public ApiResponse<PageResult<DimensionView>> pageDimensions(@PathVariable Long schemeId,@RequestParam(required=false) String dimCode,
             @RequestParam(required=false) String dimValue,@RequestParam(defaultValue="1") @Min(1) int pageNo,@RequestParam(defaultValue="20") @Min(1) @Max(100) int pageSize) {
@@ -40,4 +52,5 @@ public class SchemeManagementController {
     public record UpdateSchemeRequest(@NotBlank @Size(max=128) String schemeName,@Size(max=512) String remark,@NotNull @Min(0) Integer rowVersion) { }
     public record CreateDimensionRequest(@NotBlank @Size(max=64) String dimCode,@NotBlank String dimValues,@NotBlank @Pattern(regexp="IN|NOT_IN",message="matchMode 仅支持 IN 或 NOT_IN") String matchMode) { }
     public record UpdateDimensionRequest(@NotBlank String dimValues,@NotBlank @Pattern(regexp="IN|NOT_IN",message="matchMode 仅支持 IN 或 NOT_IN") String matchMode,@NotNull @Min(0) Integer rowVersion) { }
+    public record DeleteRequest(@NotNull @Min(0) Integer rowVersion) { }
 }

@@ -24,7 +24,7 @@
 | v1.4 | 2026-09-24 | 评审点全部关闭（D7 按当前默认设计定案），文档定稿 |
 | v1.5 | 2026-09-24 | **按 D8/D10 同步**：新增 §9 沙盒试算（CalcEvaluator，D4 边界不变）；观察者模式动作去清缓存；原 §9/§10 顺延为 §10/§11 |
 | v1.6 | 2026-09-24 | 模板方法登记补充：`AbstractImportPipeline` 批量导入五步骨架（配合 D10 与 teaching 专题④） |
-| v1.8 | 2026-09-29 | 方案稳定编号移除：前后端与分发契约统一使用 `schemeId`；时间版本链改由内部 `root_scheme_id` 维护。 |
+| v1.8 | 2026-09-29 | 方案稳定编号移除：前后端与分发契约统一使用 `schemeId`；生效区间由方案记录自身维护。 |
 
 ---
 
@@ -58,12 +58,12 @@ DRAFT ─submit─▶ PENDING_APPROVAL ─approve─▶ PUBLISHED(start/end 已�
    │                    │reject→回DRAFT            │ 新版本发布时: 本行 end_time 被闭合(唯一允许的 UPDATE)
    └─CANCELLED(作废)                             └─区间滑过后自然成为"历史版本"(状态不变, 可回放/可回滚源)
 
-不变式: I1 同实例(root_scheme_id，仅内部使用) PUBLISHED 区间互不重叠 / I4 同费用并存生效实例命中维度集两两互斥
-        I2 闭旧+转正同事务原子 / I3 start・end 发布后不可改
+不变式: I4 同费用并存生效方案的命中维度集两两互斥
+        I3 start・end 发布后不可改
 推论: (费用×维度点×时点) 唯一命中一个生效方案 → 下游无需优先级决胜
 D6: 不设"允许重叠按规则决胜"的柔性模式, 冲突即拒绝发布; "默认方案"用 NOT_IN 补集表达,
     与新增专属实例在同一次组发布内原子变更(终态复核, 见 data-model §6.2/§7)
-回滚: 复制历史版本内容为新 DRAFT → 走正常发布(rollback_from_id 溯源), 区间链线性不倒退
+回滚: 复制历史内容为新 DRAFT → 走正常发布，保留新记录的审计日志。
 ```
 
 - 流转骨架抽象为 `AbstractTransition`（模板方法）：`checkPermission() → checkStateMachine() → validateAggregate() → doExecute()【钩子:各流转差异】 → writeAudit()`，全部在**同一本地事务**内执行（architecture §4.1）。
@@ -238,7 +238,7 @@ public interface SchemeDeliveryService {                    // Dubbo, group=pric
 无上报接口(v1.1 删): 下游状态管理不在平台职责内(决策 D1/D2 收敛)。
 ```
 
-回滚与变更感知：回滚产生**新的版本行**（start 更晚、内容=历史副本），故下游以 `(schemeId, startTime, contentHash)` 判新。`root_scheme_id` 仅用于内部回溯版本链；前后端和下游均不使用它。多个维度互斥的实例可以在同一费用、同一 `startTime` 并存；唯一版本定位与幂等键必须使用 **`(schemeId, startTime)`**（`contentHash` 用于变更与完整性校验）。（红字约定：下游若缓存过旧时点内容，`schemeAt(t)` 的结果永不变化——时点语义天然可永久缓存。）
+变更感知以 `(schemeId, startTime, contentHash)` 判新。多个维度互斥的方案可以在同一费用、同一 `startTime` 并存；唯一记录定位与幂等键必须使用 **`(schemeId, startTime)`**（`contentHash` 用于变更与完整性校验）。（红字约定：下游若缓存过旧时点内容，`schemeAt(t)` 的结果永不变化——时点语义天然可永久缓存。）
 
 ---
 

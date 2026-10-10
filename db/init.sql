@@ -73,7 +73,6 @@ CREATE TABLE pricing_fee_item (
 
 CREATE TABLE pricing_scheme (
   id BIGINT NOT NULL,
-  root_scheme_id BIGINT NOT NULL COMMENT '同一方案实例的内部版本链根ID；首版本等于自身ID',
   fee_id BIGINT NOT NULL,
   scheme_name VARCHAR(128) NOT NULL,
   status VARCHAR(16) NOT NULL,
@@ -81,7 +80,6 @@ CREATE TABLE pricing_scheme (
   end_time DATETIME(3) NULL,
   content_hash CHAR(64) NULL,
   gray_flag TINYINT NOT NULL DEFAULT 0,
-  rollback_from_id BIGINT NULL,
   published_by VARCHAR(64) NULL,
   published_at DATETIME(3) NULL,
   remark VARCHAR(512),
@@ -90,8 +88,6 @@ CREATE TABLE pricing_scheme (
   is_deleted TINYINT NOT NULL DEFAULT 0,
   row_version INT NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_root_scheme_start (root_scheme_id, start_time),
-  KEY idx_root_scheme (root_scheme_id, start_time),
   KEY idx_fee_status (fee_id, status, start_time, end_time),
   KEY idx_schedule_scan (status, start_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='定价方案时间版本行';

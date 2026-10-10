@@ -10,10 +10,11 @@ spring:
       port: 6379
       database: 0
 
-dubbo:
-  registry:
-    address: nacos://127.0.0.1:8848
-  config-center:
-    address: nacos://127.0.0.1:8848
-  metadata-report:
-    address: nacos://127.0.0.1:8848
+# 本地启动临时禁用 Dubbo（原 metadata-report: N/A 会让 Dubbo 3.2.15 启动失败）。
+#dubbo:
+#  registry:
+#    address: N/A
+#  config-center:
+#    address: N/A
+#  metadata-report:
+#    address: N/A

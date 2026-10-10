@@ -20,13 +20,14 @@ mybatis:
   configuration:
     map-underscore-to-camel-case: true
 
-dubbo:
-  application:
-    name: ${spring.application.name}
-  protocol:
-    name: dubbo
-    port: -1
-  scan:
-    base-packages: com.pricing.management.delivery
-  consumer:
-    check: false
+# 本地启动临时禁用 Dubbo：provider 依赖已从 pm-admin 移除，此块一并注释。
+#dubbo:
+#  application:
+#    name: ${spring.application.name}
+#  protocol:
+#    name: dubbo
+#    port: -1
+#  scan:
+#    base-packages: com.pricing.management.delivery
+#  consumer:
+#    check: false
