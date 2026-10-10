@@ -20,14 +20,23 @@ public class PricingSchemeApplicationService {
             RedissonClient redisson, SchemeEditTxService editTx) {
         this.schemes=schemes; this.dimensions=dimensions; this.groups=groups; this.fees=fees; this.ids=ids; this.redisson=redisson; this.editTx=editTx;
     }
-    @Transactional public SchemeView create(SchemeCommand.Create c) {
+    @Transactional
+    public SchemeView create(SchemeCommand.Create c) {
         PricingFeeGroupDO group=groups.selectByGroupNo(c.groupNo());
-        if (group==null || !c.bizCode().equals(group.getBizCode())) throw new BusinessException("NOT_FOUND","费用包不存在或不属于该业务");
+        if (group==null || !c.bizCode().equals(group.getBizCode()))
+            throw new BusinessException("NOT_FOUND","费用包不存在或不属于该业务");
         PricingFeeItemDO fee=fees.selectByGroupId(group.getId()).stream().filter(x->c.feeCode().equals(x.getFeeCode())).findFirst()
                 .orElseThrow(()->new BusinessException("NOT_FOUND","费用项不存在或不属于该费用包"));
-        long id=ids.nextId(); PricingSchemeDO s=new PricingSchemeDO();
-        s.setId(id); s.setFeeId(fee.getId()); s.setSchemeName(c.schemeName()); s.setStatus("DRAFT"); s.setGrayFlag(0); s.setRemark(c.remark());
-        schemes.insert(s); return schemeView(requireScheme(id));
+        long id=ids.nextId();
+        PricingSchemeDO s=new PricingSchemeDO();
+        s.setId(id);
+        s.setFeeId(fee.getId());
+        s.setSchemeName(c.schemeName());
+        s.setStatus("DRAFT");
+        s.setGrayFlag(0);
+        s.setRemark(c.remark());
+        schemes.insert(s);
+        return schemeView(requireScheme(id));
     }
     public SchemeView update(SchemeCommand.Update c) {
         PricingSchemeDO s=requireScheme(c.schemeId());
