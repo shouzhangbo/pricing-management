@@ -13,4 +13,7 @@ public interface PricingSchemeMapper extends BaseCrudMapper<PricingSchemeDO> {
         @Param("feeCode") String feeCode, @Param("schemeName") String schemeName, @Param("status") String status);
     List<PricingSchemeDO> selectEffectiveByFeeId(@Param("feeId") Long feeId, @Param("atTime") LocalDateTime atTime);
     List<PricingSchemeDO> selectPublishedByFeeIdForUpdate(@Param("feeId") Long feeId);
+    int closePublished(@Param("id") Long id, @Param("endTime") LocalDateTime endTime);
+    int publishDraft(@Param("id") Long id, @Param("startTime") LocalDateTime startTime,
+                     @Param("publishBatchId") String publishBatchId, @Param("publishedBy") String publishedBy);
 }

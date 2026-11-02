@@ -9,7 +9,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 文档状态 | ✅ v3.6 已同步 v2.5 口径 |
+| 文档状态 | ✅ v3.7：当前版本审批后置，补充发布批次与 JSON 约束 |
 | 数据库 | MySQL 8.0，InnoDB，utf8mb4，单库不分片 |
 
 ### 版本变更记录
@@ -25,6 +25,7 @@
 | v3.4 | 2026-09-24 | **按 D8/D9/D10 同步**：发布锁（Redis fee 级）从锁步与 §6.3 防线描述中删除，并发全由 DB 行锁承担；afterCommit 去清缓存；容量读压力口径改为直查 DB。**表结构零变更**：D10 新功能（批量导入导出/维度绑定管理/沙盒试算）全部复用既有 12 表，不新增表/列 |
 | v3.5 | 2026-09-24 | 维度绑定表新增**联合索引 `idx_dimval_time`**（维度值多值索引 + start_time/end_time，MySQL 8.0.17+），支撑"维度点×时点反查生效实例"：hit 消歧、维度绑定视图、冲突预检的共同数据地基 |
 | v3.6 | 2026-09-29 | 同步分发契约修正：hit 前置检索使用业务/费用组/费用编码三元作用域，避免将仅组内唯一的 `fee_code` 当作全局键。 |
+| v3.7 | 2026-10-24 | 当前版本移除审批必经路径；增加 `publish_batch_id`、发布批次索引、JSON 结构约束和费用组编辑聚合口径。 |
 
 ---
 
@@ -181,17 +182,19 @@ CREATE TABLE pricing_scheme (
   id BIGINT NOT NULL,
   fee_id      BIGINT      NOT NULL COMMENT '所属费用(费用:实例=1:N并存,各绑不同维度; 同费用生效实例受I4互斥约束)',
   scheme_name VARCHAR(128) NOT NULL,
-  status      VARCHAR(16) NOT NULL COMMENT 'DRAFT草稿/PENDING_APPROVAL审批中/PUBLISHED已发布(区间定生效)/CANCELLED已作废',
+  status      VARCHAR(16) NOT NULL COMMENT '当前版本使用DRAFT草稿/PUBLISHED已发布(区间定生效)/CANCELLED已作废; PENDING_APPROVAL为后置审批兼容值, 当前不可进入',
   start_time  DATETIME(3) NULL COMMENT '版本生效时间; 发布时写入(支持未来时间=定时发布); DRAFT为NULL',
   end_time    DATETIME(3) NULL COMMENT '版本失效时间; NULL=无限期, 被新版本闭合时写入; DRAFT为NULL',
   content_hash CHAR(64) NULL COMMENT '发布时计算: 该版本全量内容(维度+因子赋值+双模板含槽绑定)的canonical序列化SHA-256',
+  publish_batch_id VARCHAR(64) NULL COMMENT '一次费用组发布事务的关联标识; 同批方案使用同一值, 便于审计和问题排查',
   gray_flag   TINYINT NOT NULL DEFAULT 0 COMMENT '灰度标记(下游自主灰度消费)',
   published_by VARCHAR(64) NULL, published_at DATETIME(3) NULL,
   remark VARCHAR(512),
   -- +公共
   PRIMARY KEY (id),
   KEY idx_fee_status (fee_id, status, start_time, end_time) COMMENT '当前/时点生效查询主路径',
-  KEY idx_schedule_scan (status, start_time) COMMENT '审批超时/作废清理等辅助job'
+  KEY idx_schedule_scan (status, start_time) COMMENT '未来生效扫描、作废清理等辅助job',
+  KEY idx_publish_batch (publish_batch_id)
 ) COMMENT '定价方案·时间版本行: 一行=一个时间区间版本(取代version_no+Bundle)';
 ```
 
@@ -210,7 +213,7 @@ CREATE TABLE pricing_scheme_dimension (
   match_mode VARCHAR(16) NOT NULL DEFAULT 'IN' COMMENT 'IN/NOT_IN',
   -- +公共
   PRIMARY KEY (id),
-  UNIQUE KEY uk_scheme_dim (scheme_id, dim_code),
+  UNIQUE KEY uk_scheme_dim (scheme_id, dim_code) COMMENT '同一方案版本每个维度编码最多一条; 多值放在同一JSON数组中',
   KEY idx_time (start_time, end_time),
   KEY idx_dimcode (dim_code) COMMENT '运营视角: 按维度反查哪些方案在何时期生效; 也是I4互斥校验数据源',
   KEY idx_dimval_time ((CAST(dim_values AS CHAR(64) ARRAY)), start_time, end_time) COMMENT '★维度值+时间区间联合(8.0.17+ 多值索引): 维度点×时点反查生效实例, 加速 hit 消歧/维度绑定视图/冲突预检'
@@ -229,7 +232,7 @@ CREATE TABLE pricing_scheme_factor_value (
   value_json  JSON NOT NULL COMMENT '按因子value_type赋值(NUMBER/ENUM/RANGE_TABLE/COEFF_TABLE)',
   -- +公共
   PRIMARY KEY (id),
-  UNIQUE KEY uk_scheme_factor (scheme_id, factor_code)
+  UNIQUE KEY uk_scheme_factor (scheme_id, factor_code) COMMENT '同一方案版本每个因子最多一条赋值'
 ) COMMENT '方案因子赋值(挂版本行; 受场景factor_scope+因子validate_rule双重校验)';
 ```
 
@@ -245,7 +248,7 @@ CREATE TABLE pricing_scheme_template (
   slot_bindings    JSON NULL COMMENT '仅DISPLAY行: 展示槽位→CALC输出字段绑定表',
   -- +公共
   PRIMARY KEY (id),
-  UNIQUE KEY uk_scheme_type (scheme_id, template_type) COMMENT '每版本CALC/DISPLAY各且仅1 → 成对约束',
+  UNIQUE KEY uk_scheme_type (scheme_id, template_type) COMMENT '每版本CALC/DISPLAY各且仅1; 成对存在由发布校验保证',
   KEY idx_template (template_code, template_version) COMMENT '模板下线保护反查'
 ) COMMENT '方案-模板引用(版本行内冻结; 绑定校验矩阵见 pricing-model.md §5)';
 ```
@@ -288,7 +291,7 @@ CREATE TABLE pricing_template (
 ```sql
 CREATE TABLE approval_flow (
   id BIGINT NOT NULL,
-  biz_type   VARCHAR(32) NOT NULL COMMENT 'GROUP_PUBLISH(组内整批方案一次审批单)/GROUP_OFFLINE',
+  biz_type   VARCHAR(32) NOT NULL COMMENT '后置审批模块预留; 当前版本不写入',
   group_id   BIGINT NOT NULL,
   scheme_ids JSON NOT NULL COMMENT '本次审批覆盖的方案版本行id清单',
   action     VARCHAR(16) NOT NULL COMMENT 'SUBMIT/APPROVE/REJECT/WITHDRAW',
@@ -313,6 +316,35 @@ PARTITION BY RANGE (TO_DAYS(operate_time)) (
   PARTITION p202609 VALUES LESS THAN (TO_DAYS('2026-10-01'))   -- job 预建下月分区, 半年前分区归档
 );
 ```
+
+> **当前版本范围**：`approval_flow` 仅保留为后置能力的结构预留，当前发布不依赖该表，`pricing_scheme` 不进入 `PENDING_APPROVAL`。费用组发布通过 `publish_batch_id` 将同一事务内的方案版本关联起来，操作留痕统一写入 `audit_log`。
+
+### 5.1 数据约束与 JSON 结构
+
+数据库暂不创建外键，引用完整性由应用事务和发布校验保证：
+
+- `pricing_scene.biz_code` 必须对应有效业务线；
+- `pricing_fee_group (biz_code, scene_code)` 必须对应有效场景；
+- `pricing_fee_item.group_id` 必须对应有效费用组；
+- `pricing_scheme.fee_id` 必须对应有效费用项；
+- 维度、因子赋值、模板引用的 `scheme_id` 必须对应同一方案版本。
+
+JSON 字段不是任意 JSON：
+
+- `dim_values`：非空字符串数组，元素去重；`match_mode` 只能为 `IN` 或 `NOT_IN`；
+- `value_json`：结构由 `pricing_factor.value_type` 决定，必须通过对应校验器；
+- `slot_bindings`：仅 DISPLAY 模板使用，必须引用 CALC 模板声明的输出字段；
+- `content_json`：CALC 为受限公式树，DISPLAY 为文案和变量槽，不允许脚本执行；
+- `factor_scope`、`dict_json`、`validate_rule`：必须符合平台约定的 JSON Schema。
+
+以下规则由应用层保证，并在发布校验中再次复核：
+
+- DRAFT 可修改，PUBLISHED 内容不可修改，只允许通过新版本关闭旧 `end_time`；
+- 同一费用同一时间区间不得产生重叠生效版本；
+- 同一费用同一时点的维度命中集合必须两两不相交；
+- 发布批次内所有方案使用同一 `start_time` 和 `publish_batch_id`；
+- 必填费用必须存在完整可发布方案，非必填费用可以没有生效方案；
+- 逻辑删除对象不可被新建方案引用，历史已发布版本仍可回放。
 
 ### v3.0 删除表清单（留痕）
 
@@ -385,7 +417,7 @@ publishGroup(groupId):
   5 终态复核(D6): 事务视图重建涉及费用的生效集(=发布后终态),
           两两复核 I1(区间重叠)/I4(§6.2 维度互斥) → 任一违规整体回滚
           (置于写入后: 支持"默认 NOT_IN 缩集+新增专属"同组原子变更的终态判定)
-  6 留痕: approval_flow 终态 + audit_log 逐行 before/after
+  6 关联与留痕: 写入同批 `publish_batch_id` + audit_log 逐行 before/after
 提交后: afterCommit → MQ 发布事件(失败仅日志告警)
 ```
 

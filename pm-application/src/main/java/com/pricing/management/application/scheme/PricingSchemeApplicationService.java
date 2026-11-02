@@ -2,10 +2,14 @@ package com.pricing.management.application.scheme;
 
 import com.pricing.management.infrastructure.dataobject.*;
 import com.pricing.management.infrastructure.mapper.*;
+import com.pricing.management.infrastructure.redis.RawRedisSchemeEditLock;
+
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +19,11 @@ public class PricingSchemeApplicationService {
     private final PricingSchemeMapper schemes; private final PricingSchemeDimensionMapper dimensions;
     private final PricingFeeGroupMapper groups; private final PricingFeeItemMapper fees;
     private final TimeBasedIdGenerator ids; private final RedissonClient redisson; private final SchemeEditTxService editTx;
+    private final RawRedisSchemeEditLock editorLock;
     public PricingSchemeApplicationService(PricingSchemeMapper schemes, PricingSchemeDimensionMapper dimensions,
             PricingFeeGroupMapper groups, PricingFeeItemMapper fees, TimeBasedIdGenerator ids,
-            RedissonClient redisson, SchemeEditTxService editTx) {
-        this.schemes=schemes; this.dimensions=dimensions; this.groups=groups; this.fees=fees; this.ids=ids; this.redisson=redisson; this.editTx=editTx;
+            RedissonClient redisson, SchemeEditTxService editTx, RawRedisSchemeEditLock editorLock) {
+        this.schemes=schemes; this.dimensions=dimensions; this.groups=groups; this.fees=fees; this.ids=ids; this.redisson=redisson; this.editTx=editTx; this.editorLock=editorLock;
     }
     @Transactional
     public SchemeView create(SchemeCommand.Create c) {
@@ -72,6 +77,54 @@ public class PricingSchemeApplicationService {
     public List<FeeItemView> listFeeItems(String bizCode,String groupNo) {
         PricingFeeGroupDO g=groups.selectByGroupNo(groupNo); if(g==null || !bizCode.equals(g.getBizCode())) throw new BusinessException("NOT_FOUND","费用包不存在或不属于该业务");
         return fees.selectByGroupId(g.getId()).stream().map(x->new FeeItemView(x.getId(),x.getFeeCode(),x.getFeeName(),x.getSeqNo(),x.getStatus())).toList();
+    }
+    /**
+     * 编辑器视图加载：用原始 Redis（SETNX + GET/EXPIRE/DEL，不使用 Lua）抢编辑器分布式锁，
+     * 防止同一方案被多人并发打开编辑器后互相覆盖；同一线程嵌套进入按重入放行。
+     * 流程：1 校验方案存在 → 2 抢锁（快速失败；Redis 不可用按 fail-close 拒绝）→ 3 组装视图 → 4 释放锁。
+     */
+    public SchemeEditorView editor(Long schemeId) {
+        // 流程1：先校验方案存在，避免为不存在的方案做无意义的加锁/解锁
+        PricingSchemeDO scheme = requireScheme(schemeId);
+        // 流程2：尝试加锁（不等待、不重试，抢不到立即返回冲突提示；同一线程嵌套进入会重入放行并刷新 TTL）。
+        //        Redis 连接异常会抛 DataAccessException，此处按项目 fail-close 口径直接拒绝访问，
+        //        绝不"无锁放行"——编辑低频高代价，宁可停服也不牺牲数据正确性。
+        String lockToken;
+        try {
+            lockToken = editorLock.tryAcquire(schemeId);
+        } catch (DataAccessException e) {
+            throw new BusinessException("SYSTEM_ERROR", "Redis 不可用，编辑器入口拒绝访问（fail-close）");
+        }
+        // tryAcquire 返回 null = SET NX 未命中，锁在他人手里
+        if (lockToken == null) {
+            throw new BusinessException("CONFLICT", "该方案编辑器正被他人使用，请稍后重试");
+        }
+        try {
+            // 流程3：持锁期间组装载入编辑器所需的完整视图：方案主体 + 全部维度绑定；仅 DRAFT 状态可编辑
+            boolean editable = "DRAFT".equals(scheme.getStatus());
+            return new SchemeEditorView(schemeView(scheme),
+                    dimensions.selectBySchemeId(schemeId).stream().map(this::dimensionView).toList(),
+                    editable, editable ? null : "仅草稿方案允许编辑");
+        } finally {
+            // 流程4：无论业务成功与否都释放锁。release 内部"GET 比对 token 相等才 DEL"（原始命令，不用 Lua），
+            //        只删本次持有的锁；同线程重入时内层 release 只回退计数，最外层才真删；
+            //        即使此处释放失败（Redis 闪断），锁也会在 TTL 30s 后自动过期兜底，不产生死锁，因此异常可安全吞掉。
+            try {
+                editorLock.release(schemeId, lockToken);
+            } catch (DataAccessException ignored) { }
+        }
+    }
+    public FeeGroupEditorView groupEditor(String bizCode, String groupNo) {
+        PricingFeeGroupDO group = groups.selectByGroupNo(groupNo);
+        if (group == null || !bizCode.equals(group.getBizCode()))
+            throw new BusinessException("NOT_FOUND", "费用组不存在或不属于该业务");
+        List<FeeGroupEditorView.FeeEditorView> items = fees.selectByGroupId(group.getId()).stream().map(fee ->
+                new FeeGroupEditorView.FeeEditorView(new FeeItemView(fee.getId(), fee.getFeeCode(), fee.getFeeName(), fee.getSeqNo(), fee.getStatus()),
+                        schemes.selectPage(bizCode, groupNo, fee.getFeeCode(), null, null, 0, 1000).stream()
+                                .map(s -> new SchemeEditorView(schemeView(s), dimensions.selectBySchemeId(s.getId()).stream().map(this::dimensionView).toList(),
+                                        "DRAFT".equals(s.getStatus()), "DRAFT".equals(s.getStatus()) ? null : "仅草稿方案允许编辑"))
+                                .toList())).toList();
+        return new FeeGroupEditorView(new FeeGroupView(group.getId(), group.getGroupNo(), group.getGroupName(), group.getSceneCode(), group.getStatus()), items);
     }
     private PricingSchemeDO requireScheme(Long id) { PricingSchemeDO s=schemes.selectById(id); if(s==null) throw new BusinessException("NOT_FOUND","方案不存在"); return s; }
     private PricingSchemeDimensionDO requireDimension(Long id) { PricingSchemeDimensionDO d=dimensions.selectById(id); if(d==null) throw new BusinessException("NOT_FOUND","维度绑定不存在"); return d; }

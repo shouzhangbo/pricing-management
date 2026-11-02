@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>配送费定价管理平台 · 配置逻辑演示（教学用）</title>
+<style>
+  :root{
+    --sb-w:216px; --brand:#2f6fed; --brand-d:#1d4ed8;
+    --ink:#1f2329; --ink2:#4e5969; --ink3:#86909c;
+    --line:#e5e6eb; --bg:#f2f3f5; --card:#fff;
+    --ok:#00b42a; --warn:#ff7d00; --err:#f53f3f; --grey:#86909c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+       background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6}
+  /* ---------- 布局：左导航 + 右工作台 ---------- */
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sb-w);background:#17181c;color:#c9cdd4;
+           display:flex;flex-direction:column;z-index:20}
+  .main{margin-left:var(--sb-w);min-height:100vh;display:flex;flex-direction:column}
+  .topbar{background:#fff;border-bottom:1px solid var(--line);padding:0 20px}
+  .content{padding:16px 20px 28px;flex:1}
+  /* ---------- 侧栏 ---------- */
+  .logo{padding:16px 18px 14px;border-bottom:1px solid #292b31}
+  .logo b{color:#fff;font-size:15px;letter-spacing:.5px;display:block}
+  .logo span{font-size:11px;color:#6b7280}
+  .nav{padding:8px 0;flex:1;overflow:auto}
+  .nav-item{padding:10px 18px;cursor:pointer;font-size:13.5px;display:flex;align-items:center;gap:9px;
+            border-left:3px solid transparent;user-select:none}
+  .nav-item:hover{background:#21232a;color:#fff}
+  .nav-item.on{background:#21232a;color:#fff;border-left-color:var(--brand)}
+  .nav-item i{width:14px;text-align:center;font-style:normal;opacity:.75}
+  .nav-group{padding:14px 18px 6px;font-size:11px;color:#6b7280;letter-spacing:.5px}
+  .sb-foot{padding:10px 18px;border-top:1px solid #292b31;font-size:11px;color:#6b7280;line-height:1.7}
+  /* ---------- 业务线（租户）切换条 ---------- */
+  .tenant{display:flex;align-items:center;gap:6px;padding:12px 0 10px}
+  .tenant>span{font-size:12px;color:var(--ink3);margin-right:6px;white-space:nowrap}
+  .pill{padding:5px 16px;border-radius:16px;border:1px solid var(--line);background:#fff;cursor:pointer;
+        font-size:13px;color:var(--ink2);white-space:nowrap;user-select:none}
+  .pill:hover{border-color:var(--brand);color:var(--brand)}
+  .pill.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .pill em{font-style:normal;opacity:.7;font-size:11px;margin-left:4px}
+  .bizline-bar{padding-left:18px;margin-left:6px;border-left:1px dashed var(--line);font-size:12px;color:var(--ink3);white-space:nowrap}
+  /* ---------- 页签上方的场景下拉 ---------- */
+  .scenerow{display:flex;align-items:center;gap:9px;padding:0 0 12px}
+  .scenerow>span{font-size:12px;color:var(--ink3);white-space:nowrap}
+  .scenerow select{min-width:190px;padding:6px 10px;font-size:13.5px}
+  .scenerow .sc-cnt{font-size:12px;color:var(--ink3)}
+  .scenerow .sc-cnt b{color:var(--ink2)}
+  /* ---------- 页签 ---------- */
+  .tabs{display:flex;gap:2px;margin-top:2px;border-bottom:1px solid var(--line)}
+  .tab{padding:9px 22px;cursor:pointer;font-size:14px;color:var(--ink2);border-bottom:2px solid transparent;user-select:none}
+  .tab:hover{color:var(--brand)}
+  .tab.on{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+  /* ---------- 卡片 / 筛选 / 按钮 ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;margin-top:14px;overflow:hidden}
+  .card-hd{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .card-hd h3{margin:0;font-size:14px}
+  .card-bd{padding:14px 16px}
+  .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--ink3)}
+  select,input[type=text],input[type=number],input[type=datetime-local],textarea{
+    border:1px solid var(--line);border-radius:5px;padding:5px 8px;font-size:13px;font-family:inherit;color:var(--ink);background:#fff}
+  select:focus,input:focus,textarea:focus{outline:none;border-color:var(--brand)}
+  textarea{width:100%;min-height:56px;font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:5px;padding:5px 14px;font-size:13px;cursor:pointer;color:var(--ink2)}
+  .btn:hover{border-color:var(--brand);color:var(--brand)}
+  .btn-p{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn-p:hover{background:var(--brand-d);color:#fff}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .mini{border:none;background:none;color:var(--brand);cursor:pointer;font-size:13px;padding:0 6px}
+  .mini:hover{text-decoration:underline}
+  .mini:disabled{color:var(--ink3);cursor:not-allowed;text-decoration:none}
+  .mini.danger{color:var(--err)}
+  /* ---------- 表格 ---------- */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:#fafafa;text-align:left;font-weight:600;color:var(--ink2);white-space:nowrap}
+  th,td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody tr:hover{background:#f7f8fa}
+  td .sub{font-size:11.5px;color:var(--ink3)}
+  .tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;border:1px solid;line-height:18px;white-space:nowrap}
+  .tag.pub{color:var(--ok);border-color:#aee1b8;background:#f0faf2}
+  .tag.draft{color:var(--warn);border-color:#ffcf99;background:#fff7e8}
+  .tag.hist{color:var(--grey);border-color:#d4d7dd;background:#f7f8fa}
+  .tag.off{color:var(--grey);border-color:#d4d7dd;background:#f7f8fa}
+  .tag.in{color:var(--brand);border-color:#bcd3fb;background:#f0f5ff}
+  .tag.notin{color:#7c3aed;border-color:#d5c3f5;background:#f7f2ff}
+  .ver{font-size:11.5px;color:var(--ink2);background:#f2f3f5;border-radius:4px;padding:1px 6px}
+  .empty{padding:40px;text-align:center;color:var(--ink3);font-size:13px}
+  /* ---------- 教学提示条 ---------- */
+  .note{margin-top:14px;background:#f0f5ff;border:1px solid #bcd3fb;border-left:3px solid var(--brand);
+        border-radius:6px;padding:10px 14px;font-size:12.5px;color:#1d3a7a;line-height:1.9}
+  .note b{color:#0e2a5f}
+  .hint{font-size:11.5px;color:var(--ink3);margin-top:3px;line-height:1.5}
+  /* ---------- 弹窗 / 抽屉 / 浮层 ---------- */
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100}
+  .modal{background:#fff;border-radius:10px;width:680px;max-width:94vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+  .modal-hd{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+  .modal-hd h3{margin:0;font-size:15px}
+  .x{border:none;background:none;font-size:20px;color:var(--ink3);cursor:pointer;line-height:1}
+  .x:hover{color:var(--ink)}
+  .modal-bd{padding:16px 18px;overflow:auto}
+  .modal-ft{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+  .content-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:12.5px;color:var(--ink2)}
+  .content-row input{width:92px}
+  .content-row .distance-end{width:104px}
+  .content-row.distance-row{display:grid;grid-template-columns:68px auto 92px auto 68px auto 68px auto;gap:5px;flex-wrap:nowrap;white-space:nowrap}
+  .content-row.time-row{display:grid;grid-template-columns:106px auto 106px auto 68px auto;gap:5px;flex-wrap:nowrap;white-space:nowrap}
+  .content-row.distance-row input,.content-row.time-row input{width:100%;min-width:0}
+  .field label{display:block;font-size:12px;color:var(--ink2);margin-bottom:4px}
+  .field label em{color:var(--err);font-style:normal}
+  .field input,.field select{width:100%}
+  .field.full{grid-column:1/-1}
+  .err-box{background:#ffece8;border:1px solid #fdcdc5;color:#cb2724;border-radius:6px;padding:9px 12px;font-size:12.5px;margin-bottom:12px;line-height:1.8}
+  .drawer{position:fixed;right:0;top:0;bottom:0;width:620px;max-width:96vw;background:#fff;
+          box-shadow:-6px 0 24px rgba(0,0,0,.12);z-index:110;display:flex;flex-direction:column}
+  .drawer .modal-bd{padding:16px 18px}
+  .kv{display:grid;grid-template-columns:96px 1fr;gap:6px 10px;font-size:13px;margin-bottom:14px}
+  .kv dt{color:var(--ink3)}
+  .kv dd{margin:0}
+  .sec{font-size:13px;font-weight:600;margin:16px 0 8px;padding-left:8px;border-left:3px solid var(--brand)}
+  .mono{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#f7f8fa;border:1px solid var(--line);
+        border-radius:5px;padding:8px 10px;white-space:pre-wrap;word-break:break-all;color:var(--ink2)}
+  /* 版本链时间轴 */
+  .chain{position:relative;padding-left:14px;border-left:2px solid var(--line)}
+  .chain-i{position:relative;padding:0 0 12px 12px;font-size:12.5px}
+  .chain-i::before{content:"";position:absolute;left:-21px;top:5px;width:10px;height:10px;border-radius:50%;
+                   background:#fff;border:2px solid var(--grey)}
+  .chain-i.now::before{border-color:var(--ok);background:var(--ok)}
+  .chain-i.draft::before{border-color:var(--warn);background:var(--warn)}
+  .chain-i small{color:var(--ink3)}
+  /* toast */
+  .toast-wrap{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .toast{padding:9px 18px;border-radius:6px;font-size:13px;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.18);max-width:70vw}
+  .toast.ok{background:var(--ok)} .toast.err{background:var(--err)} .toast.warn{background:var(--warn)} .toast.info{background:#1f2329}
+  /* 其他导航页 */
+  .page-intro{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-top:14px}
+  .page-intro h2{margin:0 0 6px;font-size:16px}
+  .page-intro p{margin:0 0 10px;font-size:13px;color:var(--ink2)}
+  .api-item{border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:10px}
+  .api-item code{font-size:12.5px;color:var(--brand-d);font-weight:600}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:11.5px;background:#f2f3f5;border-radius:4px;padding:1px 7px;color:var(--ink2)}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<!-- ============ 左侧导航栏 ============ -->
+<aside class="sidebar">
+  <div class="logo"><b>配送费定价管理平台</b><span>配置逻辑演示 · 教学用 Mock</span></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="sb-foot">数据全部为演示假数据<br>口径以 docs/ 设计文档为准</div>
+</aside>
+
+<!-- ============ 右侧工作台 ============ -->
+<div class="main">
+  <!-- 工作台顶部：业务线（租户）切换 + 场景下拉 + 页签 -->
+  <div class="topbar">
+    <div class="tenant" id="tenant"></div>
+    <div class="scenerow" id="scenerow"></div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+<div id="overlay"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* =====================================================================
+   配送费定价管理平台 · 前端交互演示（单文件 / 无依赖 / 纯假数据）
+   层级模型：业务线(租户) → 定价场景 → 费用组 → 费用 → 方案实例 → 维度绑定
+   演示重点：时间区间版本化、双模板成对、维度互斥(I4)/区间不重叠(I1)冲突拦截
+   ===================================================================== */
+
+/* ------------------------------ 1. 静态字典 ------------------------------ */
+// 业务线 = 租户口径：切换后所有数据按业务线隔离展示
+const BIZ_LINES = [
+  {code:'USER',     name:'用户配送费', owner:'C端定价运营组', desc:'用户下单时支付的配送费'},
+  {code:'RIDER',    name:'骑手配送费', owner:'骑手结算运营组', desc:'平台向骑手结算的运费与补贴'},
+  {code:'MERCHANT', name:'商家配送费', owner:'商家结算运营组', desc:'平台向商家收取或分摊的配送费'},
+];
+
+// 场景 → 费用组 → 费用（三级归属链，用于级联筛选与表单选项）
+// 三条业务线下的定价场景均为：快送 / 专送 / 混合送（每个业务线一份独立的场景记录）
+const SCENES = [
+  {code:'U_KS', name:'快送',   biz:'USER',     factors:'BASE_FEE,WEIGHT,WEATHER,TIME_SLOT'},
+  {code:'U_ZS', name:'专送',   biz:'USER',     factors:'BASE_FEE,DISTANCE,WEATHER'},
+  {code:'U_HH', name:'混合送', biz:'USER',     factors:'BASE_FEE,DISTANCE,WEIGHT'},
+  {code:'R_KS', name:'快送',   biz:'RIDER',    factors:'BASE_FEE,DISTANCE,WEATHER,TIME_SLOT'},
+  {code:'R_ZS', name:'专送',   biz:'RIDER',    factors:'BASE_FEE,DISTANCE,WEATHER'},
+  {code:'R_HH', name:'混合送', biz:'RIDER',    factors:'BASE_FEE,DISTANCE,WEIGHT'},
+  {code:'M_KS', name:'快送',   biz:'MERCHANT', factors:'BASE_FEE,USER_LEVEL'},
+  {code:'M_ZS', name:'专送',   biz:'MERCHANT', factors:'BASE_FEE,USER_LEVEL,DISTANCE'},
+  {code:'M_HH', name:'混合送', biz:'MERCHANT', factors:'BASE_FEE,DISTANCE'},
+];
+const GROUPS = [
+  {code:'FG_U_KS', name:'快送费用组',     scene:'U_KS'},
+  {code:'FG_U_ZS', name:'专送费用组',     scene:'U_ZS'},
+  {code:'FG_U_HH', name:'混合送费用组',   scene:'U_HH'},
+  {code:'FG_R_KS', name:'骑手快送费组',   scene:'R_KS'},
+  {code:'FG_R_ZS', name:'骑手专送费组',   scene:'R_ZS'},
+  {code:'FG_R_HH', name:'骑手混合送费组', scene:'R_HH'},
+  {code:'FG_M_KS', name:'商家快送费组',   scene:'M_KS'},
+  {code:'FG_M_ZS', name:'商家专送费组',   scene:'M_ZS'},
+  {code:'FG_M_HH', name:'商家混合送费组', scene:'M_HH'},
+];
+const FEES = [
+  {code:'U_KS_DELIVERY', name:'快送配送费',    group:'FG_U_KS', order:1, required:true},
+  {code:'U_KS_NIGHT',    name:'夜间配送费',    group:'FG_U_KS', order:2, required:false},
+  {code:'U_KS_WEATHER',  name:'恶劣天气附加费', group:'FG_U_KS', order:3, required:false},
+  {code:'U_ZS_DELIVERY', name:'专送配送费',    group:'FG_U_ZS', order:1, required:true},
+  {code:'U_HH_DELIVERY', name:'混合送配送费',  group:'FG_U_HH', order:1, required:true},
+  {code:'R_KS_BASE',     name:'骑手基础运费',  group:'FG_R_KS', order:1, required:true},
+  {code:'R_KS_WEATHER',  name:'骑手天气补贴',  group:'FG_R_KS', order:2, required:false},
+  {code:'R_ZS_BASE',     name:'专送基础运费',  group:'FG_R_ZS', order:1, required:true},
+  {code:'R_HH_BASE',     name:'混合送基础运费', group:'FG_R_HH', order:1, required:true},
+  {code:'M_KS_SHARE',    name:'快送费用分摊',  group:'FG_M_KS', order:1, required:true},
+  {code:'M_ZS_SHARE',    name:'专送费用分摊',  group:'FG_M_ZS', order:1, required:true},
+  {code:'M_HH_SHARE',    name:'混合送费用分摊', group:'FG_M_HH', order:1, required:true},
+];
+
+// 因子字典（平台级，场景 factor_scope 约束可用范围）
+const FACTORS = [
+  {code:'BASE_FEE',  name:'起步价',   type:'数值 NUMERIC',  rule:'> 0，两位小数'},
+  {code:'WEIGHT',    name:'重量续重', type:'区间表 RANGE_TABLE', rule:'区间连续无缝、右开'},
+  {code:'DISTANCE',  name:'距离',     type:'区间表 RANGE_TABLE', rule:'区间连续无缝'},
+  {code:'WEATHER',   name:'天气系数', type:'枚举 ENUM',     rule:'SUN / RAIN / SNOW'},
+  {code:'TIME_SLOT', name:'时段',     type:'枚举 ENUM',     rule:'NIGHT / DAY'},
+  {code:'USER_LEVEL',name:'客户等级', type:'枚举 ENUM',     rule:'V1 / V2 / V3'},
+];
+
+// 模板库（CALC 计算模板 / DISPLAY 展示模板，版本不可变、成对绑定）
+const TEMPLATES = [
+  {code:'C_START_CONT', ver:'v3', type:'CALC',    name:'起步+续重', body:'BASE_FEE + ceil((WEIGHT-1)/1) * CONT_UNIT'},
+  {code:'C_START_CONT', ver:'v2', type:'CALC',    name:'起步+续重', body:'BASE_FEE + ceil((WEIGHT-1)/1) * CONT_UNIT'},
+  {code:'C_WEATHER',    ver:'v1', type:'CALC',    name:'天气系数',  body:'BASE_FEE * WEATHER_COEF'},
+  {code:'C_DISTANCE',   ver:'v1', type:'CALC',    name:'起步+距离', body:'BASE_FEE + DISTANCE_KM * UNIT_PRICE'},
+  {code:'C_DISCOUNT',   ver:'v1', type:'CALC',    name:'补贴直减',  body:'BASE_FEE - SUBSIDY'},
+  {code:'C_FIXED_VALUE',ver:'v1', type:'CALC',    name:'固定值',    body:'BASE_FEE'},
+  {code:'C_DISTANCE_STEP',ver:'v1',type:'CALC',   name:'距离步长',  body:'按距离区间和步长累加'},
+  {code:'C_TIME_SURCHARGE',ver:'v1',type:'CALC',  name:'时间加价',  body:'按命中时段累加'},
+  {code:'C_BASE_TIME',  ver:'v1', type:'CALC',    name:'基础配送费+时间配送费', body:'BASE_FEE + TIME_SURCHARGE'},
+  {code:'D_TEXT',       ver:'v3', type:'DISPLAY', name:'标准文案',  body:'配送费 {total} 元：起步 {base} + 续重 {cont}'},
+  {code:'D_TEXT',       ver:'v2', type:'DISPLAY', name:'标准文案',  body:'配送费 {total} 元'},
+  {code:'D_WEATHER',    ver:'v1', type:'DISPLAY', name:'天气文案',  body:'恶劣天气加价 {add} 元'},
+  {code:'D_DISTANCE',   ver:'v1', type:'DISPLAY', name:'距离文案',  body:'按距离计费 {total} 元'},
+  {code:'D_DISCOUNT',   ver:'v1', type:'DISPLAY', name:'补贴文案',  body:'已补贴 {subsidy} 元，实付 {total} 元'},
+];
+
+// 维度字典（方案生效范围）
+const DIM_CODES = [
+  {id:1, code:'COUNTRY',       name:'国家',     candidates:['中国']},
+  {id:2, code:'CITY',          name:'城市',     candidates:['上海','北京','广州','深圳','杭州','成都']},
+  {id:3, code:'DELIVERY_ZONE', name:'配送区域', candidates:['G-001','G-002','G-003']},
+  {id:4, code:'GRID',          name:'网格',     candidates:['G-001','G-002','G-003']},
+  {id:5, code:'MERCHANT',      name:'商家分组', candidates:['KA组','SMB组']},
+  {id:6, code:'USER_LEVEL',    name:'客户等级', candidates:['V1','V2','V3']},
+  {id:7, code:'TIME_SLOT',     name:'时段',     candidates:['夜宵 21:00-06:00','日间 06:00-21:00']},
+];
+
+const DIMENSION_ITEMS = [
+  {id:101, type:'COUNTRY', name:'中国'},
+  {id:201, type:'CITY', name:'上海'}, {id:202, type:'CITY', name:'北京'}, {id:203, type:'CITY', name:'广州'},
+  {id:204, type:'CITY', name:'深圳'}, {id:205, type:'CITY', name:'杭州'}, {id:206, type:'CITY', name:'成都'},
+  {id:301, type:'DELIVERY_ZONE', name:'G-001'}, {id:302, type:'DELIVERY_ZONE', name:'G-002'}, {id:303, type:'DELIVERY_ZONE', name:'G-003'},
+];
+
+/* ------------------------------ 2. 演示数据 ------------------------------ */
+/* 方案记录：id 即 schemeId；start/end 表达该记录的生效时间区间。 */
+let schemes = [
+  /* ---- 用户配送费 · 快送 ---- */
+  {id:'S101', name:'基础配送费', biz:'USER', scene:'U_KS', group:'FG_U_KS', fee:'U_KS_DELIVERY',
+   status:'PUBLISHED', start:'2026-07-01 00:00', end:'2026-09-30 23:59',
+   calc:'C_FIXED_VALUE v1', display:'D_TEXT v3', factors:[['BASE_FEE','5 元']],
+   editor:'王小明', approve:'李审批'},
+  {id:'S102', name:'距离加价配送费', biz:'USER', scene:'U_KS', group:'FG_U_KS', fee:'U_KS_DELIVERY',
+   status:'PUBLISHED', start:'2026-10-01 00:00', end:'—',
+   calc:'C_DISTANCE_STEP v1', display:'D_TEXT v3', factors:[['0-500米','每增加100米增加0.5元'],['500-2500米','每增加300米增加1元'],['2500-3500米','每增加500米增加1.5元'],['3500米-无穷大','每增加1000米增加2.5元']],
+   editor:'王小明', approve:'李审批'},
+  {id:'S103', name:'时间加价配送费', biz:'USER', scene:'U_KS', group:'FG_U_KS', fee:'U_KS_DELIVERY',
+   status:'DRAFT', start:'—', end:'—',
+   calc:'C_TIME_SURCHARGE v1', display:'D_TEXT v3', factors:[['11:00-13:00','增加1.5元'],['17:40-18:30','增加2元']],
+   editor:'王小明', approve:'—'},
+  {id:'S104', name:'基础配送费+时间配送费', biz:'USER', scene:'U_KS', group:'FG_U_KS', fee:'U_KS_NIGHT',
+   status:'PUBLISHED', start:'2026-08-01 00:00', end:'—',
+   calc:'C_BASE_TIME v1', display:'D_TEXT v3', factors:[['BASE_FEE','5 元'],['11:00-13:00','增加1.5元'],['17:40-18:30','增加2元']],
+   modules:[
+     {name:'基础配送费', items:[['BASE_FEE','5 元']]},
+     {name:'时间配送费', items:[['11:00-13:00','增加1.5元'],['17:40-18:30','增加2元']]},
+   ],
+   editor:'赵琳',   approve:'李审批'},
+  {id:'S105', name:'快送恶劣天气基础附加', biz:'USER', scene:'U_KS', group:'FG_U_KS', fee:'U_KS_WEATHER',
+   status:'PUBLISHED', start:'2026-09-01 00:00', end:'—',
+   calc:'C_WEATHER v1', display:'D_WEATHER v1', factors:[['BASE_FEE','2 元'],['WEATHER','RAIN/SNOW']],
+   editor:'赵琳',   approve:'王总监'},
+  /* ---- 用户配送费 · 专送 / 混合送 ---- */
+  {id:'S106', name:'北京专送配送费', biz:'USER', scene:'U_ZS', group:'FG_U_ZS', fee:'U_ZS_DELIVERY',
+   status:'PUBLISHED', start:'2026-09-15 00:00', end:'—',
+   calc:'C_DISTANCE v1', display:'D_DISTANCE v1', factors:[['BASE_FEE','12 元'],['DISTANCE','3km 内']],
+   editor:'孙强',   approve:'李审批'},
+  {id:'S107', name:'混合送基础价', biz:'USER', scene:'U_HH', group:'FG_U_HH', fee:'U_HH_DELIVERY',
+   status:'DRAFT', start:'—', end:'—',
+   calc:'C_START_CONT v2', display:'D_TEXT v2', factors:[['BASE_FEE','9 元'],['WEIGHT','5kg 内']],
+   editor:'王小明', approve:'—'},
+  /* ---- 骑手配送费 ---- */
+  {id:'S201', name:'骑手快送基础运费·上海', biz:'RIDER', scene:'R_KS', group:'FG_R_KS', fee:'R_KS_BASE',
+   status:'PUBLISHED', start:'2026-09-01 00:00', end:'—',
+   calc:'C_DISTANCE v1', display:'D_DISTANCE v1', factors:[['BASE_FEE','4 元'],['DISTANCE','3km 内']],
+   editor:'孙强',   approve:'李审批'},
+  {id:'S202', name:'骑手天气补贴·默认（除上海）', biz:'RIDER', scene:'R_KS', group:'FG_R_KS', fee:'R_KS_WEATHER',
+   status:'PUBLISHED', start:'2026-09-01 00:00', end:'—',
+   calc:'C_WEATHER v1', display:'D_WEATHER v1', factors:[['BASE_FEE','1.5 元'],['WEATHER','RAIN/SNOW']],
+   editor:'赵琳',   approve:'王总监'},
+  {id:'S203', name:'骑手专送基础运费', biz:'RIDER', scene:'R_ZS', group:'FG_R_ZS', fee:'R_ZS_BASE',
+   status:'DRAFT', start:'—', end:'—',
+   calc:'C_DISTANCE v1', display:'D_DISTANCE v1', factors:[['BASE_FEE','6 元'],['DISTANCE','5km 内']],
+   editor:'王小明', approve:'—'},
+  /* ---- 商家配送费 ---- */
+  {id:'S301', name:'快送费用分摊·KA商家', biz:'MERCHANT', scene:'M_KS', group:'FG_M_KS', fee:'M_KS_SHARE',
+   status:'PUBLISHED', start:'2026-09-10 00:00', end:'—',
+   calc:'C_DISCOUNT v1', display:'D_DISCOUNT v1', factors:[['BASE_FEE','3 元'],['USER_LEVEL','V1/V2']],
+   editor:'孙强',   approve:'王总监'},
+];
+
+/* 维度绑定行（pricing_scheme_dimension）：schemeId + 维度码 + 匹配模式 + 值集合 + 自身区间 */
+let bindings = [
+  {id:'D001', schemeId:'S101', dimCode:'CITY',      match:'IN',    values:['上海'],                start:'2026-07-01 00:00', end:'2026-09-30 23:59'},
+  {id:'D002', schemeId:'S102', dimCode:'CITY',      match:'IN',    values:['上海'],                start:'2026-10-01 00:00', end:'—'},
+  {id:'D003', schemeId:'S104', dimCode:'TIME_SLOT', match:'IN',    values:['夜宵 21:00-06:00'],   start:'2026-08-01 00:00', end:'—'},
+  {id:'D004', schemeId:'S105', dimCode:'CITY',      match:'NOT_IN',values:['上海'],                start:'2026-09-01 00:00', end:'—'},
+  {id:'D005', schemeId:'S106', dimCode:'CITY',      match:'IN',    values:['北京'],                start:'2026-09-15 00:00', end:'—'},
+  {id:'D006', schemeId:'S107', dimCode:'GRID',      match:'IN',    values:['G-001','G-002'],      start:'—', end:'—'},
+  {id:'D201', schemeId:'S201', dimCode:'CITY',      match:'IN',    values:['上海'],                start:'2026-09-01 00:00', end:'—'},
+  {id:'D202', schemeId:'S202', dimCode:'CITY',      match:'NOT_IN',values:['上海'],                start:'2026-09-01 00:00', end:'—'},
+  {id:'D203', schemeId:'S203', dimCode:'TIME_SLOT', match:'IN',    values:['夜宵 21:00-06:00'],   start:'—', end:'—'},
+  {id:'D301', schemeId:'S301', dimCode:'MERCHANT',  match:'IN',    values:['KA组'],                start:'2026-09-10 00:00', end:'—'},
+];
+
+// 审计日志（写入即留痕，演示"谁改的"）
+let auditLogs = [
+  {time:'2026-09-28 10:22', operator:'王小明', action:'编辑草稿', object:'S103 上海快送配送费', result:'成功'},
+  {time:'2026-09-27 16:40', operator:'赵琳',   action:'组发布',   object:'FG_U_KS 快送费用组', result:'成功（终态复核通过）'},
+  {time:'2026-09-26 09:11', operator:'孙强',   action:'新增绑定', object:'S106 → CITY IN [北京]', result:'成功'},
+];
+
+let importTasks = [];
+
+/* ------------------------------ 3. 应用状态 ------------------------------ */
+const state = {
+  page:'scheme',         // 当前导航页
+  tenant:'USER',         // 当前业务线（租户）
+  scene:'',              // 页签上方的场景下拉（'' = 全部场景）
+  bindingDimTab:'COUNTRY',
+  importTaskId:null,
+  filter:{group:'', status:''},
+  seq:200,               // 自增 id 用
+};
+
+/* ------------------------------ 4. 工具函数 ------------------------------ */
+const $ = (s,el=document)=>el.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const bizName  = c => (BIZ_LINES.find(b=>b.code===c)||{}).name || c;
+const sceneOf  = c => SCENES.find(s=>s.code===c) || {};
+const groupOf  = c => GROUPS.find(g=>g.code===c) || {};
+const feeOf    = c => FEES.find(f=>f.code===c) || {};
+const schemeOf = c => schemes.find(s=>s.id===c) || {};
+const dimOf    = c => DIM_CODES.find(d=>d.code===c) || {};
+const numericId = value => Number(String(value??'').replace(/\D/g,'')) || 0;
+const templateName = ref => { const [code,ver]=String(ref||'').split(' '); const t=TEMPLATES.find(x=>x.code===code&&x.ver===ver); return t?t.name:(ref||'—'); };
+// 归属链：绑定/方案 → 费用 → 组 → 场景 → 业务线
+const feeChain = fee => { const f=feeOf(fee); const g=groupOf(f.group); const s=sceneOf(g.scene); return {fee:f,group:g,scene:s}; };
+const schemeBiz = sc => { const {scene}=feeChain(sc.fee); return scene.biz; };
+// 时间处理：'—' 表示未发布/无限
+const T = v => (v && v!=='—') ? new Date(v.replace(' ','T')).getTime() : null;
+const now = ()=> Date.now();
+const inRange = (start,end,t)=>{ const s=T(start),e=T(end); if(s===null) return false; if(t===undefined) t=now();
+                                 return s<=t && (e===null || t<e); };  // [start,end) 左闭右开
+const overlap = (a1,a2,b1,b2)=>{ const s=Math.max(T(a1)??0, T(b1)??0); const eA=T(a2), eB=T(b2);
+  const e = (eA===null||eB===null) ? Infinity : Math.min(eA,eB); return s < e; };
+const nextId = p => p + (++state.seq);
+const fmtNow = ()=>{ const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+const statusTag = st => ({PUBLISHED:'<span class="tag pub">已发布</span>', DRAFT:'<span class="tag draft">草稿</span>',
+  HISTORICAL:'<span class="tag hist">历史</span>', OFFLINE:'<span class="tag off">已下线</span>'}[st] || st);
+
+function toast(msg,type='info',ms=2600){
+  const el=document.createElement('div'); el.className='toast '+type; el.innerHTML=msg;
+  $('#toastWrap').appendChild(el); setTimeout(()=>el.remove(),ms);
+}
+function logAudit(action,object,result){
+  auditLogs.unshift({time:fmtNow(), operator:'（当前用户）学员', action, object, result});
+}
+</script>
+
+<script>
+/* ================== 第二部分：渲染层 + 交互 + 不变式校验 ================== */
+
+/* ------------------------------ 5. 导航 / 租户 / 页签 ------------------------------ */
+const NAV_GROUPS = [
+  {name:'基础配置', pages:[
+    {key:'scene',    name:'场景配置',             icon:'◇'},
+    {key:'template', name:'模板配置',             icon:'T'},
+    {key:'factor',   name:'因子配置',             icon:'ƒ'},
+    {key:'feeGroup', name:'费用组配置（关联场景）', icon:'⊞'},
+    {key:'fee',      name:'费用管理',             icon:'¥'},
+  ]},
+  {name:'业务配置', pages:[
+    {key:'scheme',   name:'定价方案管理', icon:'▣'},
+    {key:'binding',  name:'方案绑定管理', icon:'⌘'},
+    {key:'approval', name:'审批与发布', icon:'✓'},
+    {key:'importData', name:'导入数据', icon:'⇪'},
+  ]},
+];
+
+function isNavActive(key){
+  return key===state.page;
+}
+function renderNav(){
+  $('#nav').innerHTML = NAV_GROUPS.map(group =>
+    `<div class="nav-group">${group.name}</div>` + group.pages.map(p =>
+      `<div class="nav-item ${isNavActive(p.key)?'on':''}" onclick="go('${p.key}')"><i>${p.icon}</i>${p.name}</div>`
+    ).join('')
+  ).join('');
+}
+// 工作台最上方：业务线（租户）切换，切换后全站数据按租户隔离
+function renderTenant(){
+  const cur = BIZ_LINES.find(b=>b.code===state.tenant);
+  $('#tenant').innerHTML = '<span>业务线（租户）</span>' +
+    BIZ_LINES.map(b=>`<div class="pill ${b.code===state.tenant?'on':''}" onclick="setTenant('${b.code}')">${b.name}<em>${b.code}</em></div>`).join('') +
+    `<div class="bizline-bar">归属 ${cur.owner} ｜ ${cur.desc}</div>`;
+}
+// 页签上方：场景列表下拉（仅工作台），选项跟随当前业务线联动
+function renderSceneSel(){
+  if(!['scheme','binding'].includes(state.page)){ $('#scenerow').innerHTML=''; return; }
+  const list = SCENES.filter(s=>s.biz===state.tenant);
+  $('#scenerow').innerHTML = '<span>定价场景</span>' +
+    `<select onchange="setScene(this.value)"><option value="">全部场景（共 ${list.length} 个）</option>` +
+    list.map(s=>`<option value="${s.code}" ${state.scene===s.code?'selected':''}>${s.name}（${s.code}）</option>`).join('') +
+    `</select>` +
+    `<span class="sc-cnt">当前场景：<b>${state.scene?sceneOf(state.scene).name:'全部'}</b>
+      ｜ ${state.page==='scheme'?'方案':'绑定关系'} <b>${state.page==='scheme'?n_schemes().length:n_bindings().length}</b> 条</span>`;
+}
+function go(k){
+  state.page=k;
+  renderAll();
+}
+function setTenant(c){ state.tenant=c; state.scene=''; state.filter={group:'',status:''}; renderAll(); }
+function setScene(c){ state.scene=c; state.filter.group=''; renderAll(); }
+
+/* 当前租户（+ 场景下拉）下的数据切片 */
+function t_schemes(){ return schemes.filter(s=>schemeBiz(s)===state.tenant); }
+function s_schemes(){ return t_schemes().filter(s=>!state.scene || feeChain(s.fee).scene.code===state.scene); }
+function t_bindings(){ const ids=new Set(t_schemes().map(s=>s.id)); return bindings.filter(b=>ids.has(b.schemeId)); }
+function passSchemeFilter(s){
+  const {group,scene}=feeChain(s.fee);
+  if(state.scene && scene.code!==state.scene) return false;
+  if(state.filter.group && group.code!==state.filter.group) return false;
+  if(state.filter.status && s.status!==state.filter.status) return false;
+  return true;
+}
+function n_schemes(){ return t_schemes().filter(passSchemeFilter); }
+function n_bindings(){
+  return t_bindings().filter(b=>{
+    const sc=schemeOf(b.schemeId); if(!sc.fee) return false;
+    const {group,scene}=feeChain(sc.fee);
+    if(state.scene && scene.code!==state.scene) return false;
+    if(state.filter.group && group.code!==state.filter.group) return false;
+    return true;
+  });
+}
+
+/* ------------------------------ 6. 主渲染 ------------------------------ */
+function renderAll(){ renderNav(); renderTenant(); renderSceneSel(); $('#tabs').innerHTML=''; renderContent(); }
+function renderContent(){
+  const map = {scheme:renderSchemeTab, binding:renderBindingTab, importData:renderImportDataPage, scene:renderScenePage, factor:renderFactorPage, template:renderTemplatePage, feeGroup:renderFeeGroupPage, fee:renderFeePage,
+               approval:renderApproval};
+  $('#content').innerHTML = (map[state.page]||renderSchemeTab)();
+}
+function filterBar(withStatus){
+  const groups = GROUPS.filter(g=>sceneOf(g.scene).biz===state.tenant && (!state.scene || g.scene===state.scene));
+  return `<div class="filters">
+    <span>费用组</span>
+    <select onchange="state.filter.group=this.value;renderAll()">
+      <option value="">全部</option>${groups.map(g=>`<option value="${g.code}" ${state.filter.group===g.code?'selected':''}>${g.name}</option>`).join('')}
+    </select>
+    ${withStatus?`<span>状态</span><select onchange="state.filter.status=this.value;renderAll()">
+      <option value="">全部</option><option value="PUBLISHED" ${state.filter.status==='PUBLISHED'?'selected':''}>已发布</option>
+      <option value="DRAFT" ${state.filter.status==='DRAFT'?'selected':''}>草稿</option></select>`:''}
+    <button class="btn" onclick="state.scene='';state.filter={group:'',status:''};renderAll()">重置</button>
+  </div>`;
+}
+const intervalCell = (s,e)=>`<span style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px">[${s||'—'}${s&&e?' ～ ':''}${e||'—'}${e==='—'&&s?'∞':''})</span>`;
+
+/* ---------- 业务配置 · 定价方案管理 ---------- */
+function renderSchemeTab(){
+    const rows = n_schemes().map(s=>{
+    const bindCount = bindings.filter(b=>b.schemeId===s.id).length;
+    return `<tr>
+      <td><b>${numericId(s.id)}</b><div class="sub">${esc(s.name)}</div></td>
+      <td>${templateName(s.calc)}</td>
+      <td>${intervalCell(s.start,s.end)}
+        ${s.status==='PUBLISHED'?`<div class="sub">${inRange(s.start,s.end)?'此刻生效中':'未到生效时间'}</div>`:''}</td>
+      <td>${esc(s.editor||'—')}</td>
+      <td>${statusTag(s.status)}</td>
+      <td>${bindCount?'<span class="tag pub">已绑定</span>':'<span class="tag off">未绑定</span>'}</td>
+      <td>${bindCount?`<span class="ver">${bindCount} 条</span>`:'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="mini" onclick="viewScheme('${s.id}')">查看</button>
+        <button class="mini" onclick="openSchemeForm('${s.id}')">编辑</button>
+        <button class="mini" onclick="openCalculator('${s.id}')">测算</button>
+        <button class="mini danger" ${bindCount?'disabled title="已绑定方案不可删除"':''} onclick="${bindCount?'':'delScheme(\''+s.id+'\')'}">删除</button>
+      </td></tr>`;
+  }).join('');
+
+  return `<div class="card">
+    <div class="card-hd"><h3>定价方案列表</h3>${filterBar(true)}
+      <div style="flex:1"></div><button class="btn" onclick="openImport('scheme')">导入</button><button class="btn btn-p" onclick="openSchemeForm()">＋ 新增方案</button></div>
+    <table><thead><tr>
+      <th>方案 ID ／ 名称</th><th>关联模板</th><th>生效区间 [start, end)</th><th>创建人</th><th>状态</th><th>是否已绑定</th><th>绑定数量</th><th style="width:210px">操作</th>
+    </tr></thead><tbody>${rows||'<tr><td colspan="8" class="empty">当前筛选条件下暂无方案</td></tr>'}</tbody></table></div>
+  <div class="note"><b>管理规则：</b>已发布方案支持直接编辑，后端自动维护生效区间；有维度绑定的方案不可删除，需先在“方案绑定管理”中解除绑定。方案的具体规则由单一模块定义，支持固定值、距离步长、时间加价和基础配送费+时间配送费。</div>`;
+}
+
+/* ---------- 业务配置 · 方案绑定管理 ---------- */
+function renderBindingTab(){
+  const type=state.bindingDimTab, items=DIMENSION_ITEMS.filter(x=>x.type===type);
+  const rows=items.map(item=>{ const rel=n_bindings().find(b=>b.dimCode===type&&b.values.includes(item.name)); const scheme=rel?schemeOf(rel.schemeId):null;
+    return `<tr><td><b>${item.id}</b></td><td>${item.name}</td><td>${rel?intervalCell(rel.start,rel.end):'—'}</td>
+      <td>${scheme?`${scheme.id} · ${esc(scheme.name)}`:'—'}</td><td>${scheme?statusTag(scheme.status):'<span class="tag off">未绑定</span>'}</td><td>${scheme?esc(scheme.editor):'—'}</td>
+      <td><button class="mini" onclick="${rel?`unbindDimension('${rel.id}','${esc(item.name)}')`:`openBindingForDimension('${type}','${esc(item.name)}')`}">${rel?'解绑':'绑定'}</button></td></tr>`;
+  }).join('');
+  return `<div class="card"><div class="card-hd"><h3>方案-维度绑定关系</h3><div style="flex:1"></div><button class="btn" onclick="openImport('binding')">导入</button><button class="btn btn-p" onclick="openBindingForm()">＋ 新增绑定</button></div>
+    <div class="tabs">${['COUNTRY','CITY','DELIVERY_ZONE'].map(k=>`<div class="tab ${type===k?'on':''}" onclick="state.bindingDimTab='${k}';renderAll()">${dimOf(k).name}</div>`).join('')}</div>
+    <table><thead><tr><th>维度 ID</th><th>维度名称</th><th>时间区间</th><th>绑定的方案</th><th>状态</th><th>创建人</th><th>操作</th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="empty">暂无维度数据</td></tr>'}</tbody></table></div>`;
+}
+
+function openBindingForDimension(type,value){ openBindingForm(); $('#b_dim').value=type; renderDimPick([value]); }
+function unbindDimension(id,value){ const b=bindings.find(x=>x.id===id); if(!b) return; b.values=b.values.filter(x=>x!==value); if(!b.values.length) bindings=bindings.filter(x=>x.id!==id); logAudit('解除绑定',id+' '+value,'成功'); toast('已解除绑定','ok'); renderAll(); }
+
+/* ------------------------------ 7. 不变式校验：双模板 / I1 / I4 ------------------------------ */
+// 某方案在某维度上的命中集合（合并该方案全部绑定行 + 可选的待保存行；未声明=全集）
+function hitSet(schemeId, dimCode, excludeId, extra){
+  const cand = (dimOf(dimCode).candidates||[]);
+  const rows = bindings.filter(b=>b.schemeId===schemeId && b.dimCode===dimCode && b.id!==excludeId)
+                       .concat(extra && extra.dimCode===dimCode ? [extra] : []);
+  if(!rows.length) return new Set(cand);
+  let cur = null;
+  rows.forEach(r=>{
+    let seg;
+    if(r.match==='IN') seg = new Set(r.values);
+    else { seg = new Set(cand); r.values.forEach(v=>seg.delete(v)); }              // 补集
+    cur = (cur===null) ? seg : new Set([...cur].filter(v=>seg.has(v)));            // 多行取交
+  });
+  return cur || new Set();
+}
+const inter = (a,b)=>[...a].filter(v=>b.has(v));
+// I4：与同一费用下其他已发布实例比对“维度相交 + 时间重叠”
+function checkI4(schemeId, dimCode, excludeId, extra){
+  const me = schemeOf(schemeId); if(!me) return [];
+  const mine = hitSet(schemeId, dimCode, excludeId, extra);
+  if(!mine.size) return [];
+  const bad = [];
+  schemes.filter(o=>o.id!==schemeId && o.fee===me.fee && o.status==='PUBLISHED').forEach(o=>{
+    const common = inter(mine, hitSet(o.id, dimCode, null, null));
+    if(!common.length) return;
+    const timeOk = (T(me.start)===null || T(o.start)===null) ? true : overlap(me.start,me.end,o.start,o.end);
+    if(timeOk) bad.push({scheme:o, values:common});
+  });
+  return bad;
+}
+// 演示用的内容指纹（真实实现是 canonical 序列化 + SHA-256）
+function contentHash(s){
+  const src = [s.calc,s.display,s.start,s.end,s.factors.map(f=>f.join('=')).join('|'),
+               bindings.filter(b=>b.schemeId===s.id).map(b=>b.dimCode+b.match+b.values.join()).join('|')].join('#');
+  let h = 5381; for(let i=0;i<src.length;i++) h = ((h*33) ^ src.charCodeAt(i)) >>> 0;
+  return 'sha256:demo-' + h.toString(16).padStart(8,'0') + src.length.toString(16).padStart(3,'0');
+}
+</script>
+
+<script>
+/* ================== 第三部分：表单 · 详情 · 其他页 · 启动 ================== */
+
+/* 补充种子数据：同一费用下并存的两个已发布实例（IN 与 NOT_IN 互补），专门用于演示 I4 */
+schemes.push({id:'S110', name:'上海快送恶劣天气附加', biz:'USER', scene:'U_KS', group:'FG_U_KS', fee:'U_KS_WEATHER',
+  status:'PUBLISHED', start:'2026-09-01 00:00', end:'—', calc:'C_WEATHER v1', display:'D_WEATHER v1',
+  factors:[['BASE_FEE','3 元'],['WEATHER','RAIN/SNOW']], editor:'赵琳', approve:'王总监'});
+bindings.push({id:'D007', schemeId:'S110', dimCode:'CITY', match:'IN', values:['上海'], start:'2026-09-01 00:00', end:'—'});
+
+let bindEditId = '';   // 绑定表单当前编辑的行 id
+
+/* ------------------------------ 8. 方案表单（新增 / 编辑） ------------------------------ */
+function openSchemeForm(id){
+  const s = id ? schemeOf(id) : null;
+  if(s){ openSchemeEditForm(s); return; }
+  openSchemeCreateForm(); return;
+  const autoInterval = !!(s && s.status==='PUBLISHED');
+  const bizScenes = SCENES.filter(x=>x.biz===state.tenant);
+  const presetScene = s ? s.scene : state.scene;   // 新增时默认带出顶部下拉选中的场景
+  const calcOpt = TEMPLATES.filter(t=>t.type==='CALC');
+  const dispOpt = TEMPLATES.filter(t=>t.type==='DISPLAY');
+  overlay(`<div class="modal">
+    <div class="modal-hd"><h3>${s?'编辑方案':'新增方案'} ${s?s.id:''}</h3><button class="x" onclick="closeOverlay()">×</button></div>
+    <div class="modal-bd">
+      <div id="formErr"></div>
+      <div class="form-grid">
+        <div class="field"><label>业务线（租户）</label><input type="text" value="${bizName(state.tenant)}（${state.tenant}）" disabled></div>
+        <div class="field"><label>方案名称 <em>*</em></label><input type="text" id="f_name" value="${esc(s?s.name:'')}" placeholder="如：上海快送配送费"></div>
+        <div class="field"><label>定价场景 <em>*</em></label>
+          <select id="f_scene" onchange="cascadeGroups()"><option value="">请选择</option>
+          ${bizScenes.map(x=>`<option value="${x.code}" ${presetScene===x.code?'selected':''}>${x.name}</option>`).join('')}</select>
+          <div class="hint">场景的因子白名单：${bizScenes.map(x=>x.name+'→'+x.factors).join('；')}</div></div>
+        <div class="field"><label>费用组 <em>*</em></label><select id="f_group" onchange="cascadeFees()"><option value="">请先选场景</option></select></div>
+        <div class="field"><label>费用项 <em>*</em></label><select id="f_fee"><option value="">请先选费用组</option></select></div>
+        <div class="field"><label>生效开始 start ${s?'':'<em>*</em>'}</label><input type="datetime-local" id="f_start" value="${(s&&s.start&&s.start!=='—')?s.start.replace(' ','T'):''}" ${autoInterval?'disabled':''}></div>
+        <div class="field"><label>生效结束 end</label><input type="datetime-local" id="f_end" value="${(s&&s.end&&s.end!=='—')?s.end.replace(' ','T'):''}" ${autoInterval?'disabled':''}>
+          <div class="hint">${autoInterval?'编辑后由后端自动维护生效区间':'左闭右开 [start, end)；留空 = 长期有效'}</div></div>
+        <div class="field"><label>计算模板 CALC <em>*</em></label><select id="f_calc"><option value="">请选择</option>
+          ${calcOpt.map(t=>`<option value="${t.code} ${t.ver}" ${s&&s.calc===t.code+' '+t.ver?'selected':''}>${t.code} ${t.ver} · ${t.name}</option>`).join('')}</select></div>
+        <div class="field"><label>展示模板 DISPLAY <em>*</em></label><select id="f_display"><option value="">请选择</option>
+          ${dispOpt.map(t=>`<option value="${t.code} ${t.ver}" ${s&&s.display===t.code+' '+t.ver?'selected':''}>${t.code} ${t.ver} · ${t.name}</option>`).join('')}</select>
+          <div class="hint">与计算模板成对锁定、发布强校验——缺一不发</div></div>
+        <div class="field full"><label>因子赋值（每行一条 <code>因子=值</code>）<em>*</em></label>
+          <textarea id="f_factors" placeholder="BASE_FEE=6 元&#10;WEIGHT=续重 1 元/kg">${s?s.factors.map(f=>f[0]+'='+f[1]).join('\n'):''}</textarea></div>
+      </div>
+    </div>
+    <div class="modal-ft"><button class="btn" onclick="closeOverlay()">取消</button>
+      <button class="btn btn-p" onclick="saveScheme('${id||''}')">${s?'保存':'创建草稿'}</button></div>
+  </div>`);
+  if(s){ // 逐级回填
+    cascadeGroups(s.group, s.fee);
+  } else { cascadeGroups(); }
+}
+
+const EDIT_MODULES = [
+  ['C_FIXED_VALUE v1','固定值'], ['C_DISTANCE_STEP v1','距离步长'],
+  ['C_TIME_SURCHARGE v1','时间加价'], ['C_BASE_TIME v1','基础配送费+时间配送费'],
+];
+function timeRowsHtml(rows){ return rows.map(r=>`<div class="content-row time-row"><input type="time" class="time-start" value="${esc(r[0])}"><span>至</span><input type="time" class="time-end" value="${esc(r[1])}"><span>增加</span><input type="number" min="0" step="0.1" class="time-fee" value="${esc(r[2])}"><span>元</span></div>`).join(''); }
+function distanceRowsHtml(rows){ return rows.map(r=>`<div class="content-row distance-row"><input type="number" min="0" class="distance-start" value="${esc(r[0])}"><span>米 -</span><input type="number" min="0" class="distance-end" value="${esc(r[1])}" placeholder="无穷大"><span>米，每增加</span><input type="number" min="1" class="distance-step" value="${esc(r[2])}"><span>米增加</span><input type="number" min="0" step="0.1" class="distance-fee" value="${esc(r[3])}"><span>元</span></div>`).join(''); }
+function openSchemeEditForm(s){
+  overlay(`<div class="modal" style="width:760px"><div class="modal-hd"><h3>编辑方案 · ${s.id}</h3><button class="x" onclick="closeOverlay()">×</button></div>
+    <div class="modal-bd"><div id="formErr"></div><div class="form-grid">
+      <div class="field"><label>方案名称 <em>*</em></label><input type="text" id="edit_name" value="${esc(s.name)}"></div>
+      <div class="field"><label>模块 <em>*</em></label><select id="edit_module" onchange="renderContentInputs()">${EDIT_MODULES.map(m=>`<option value="${m[0]}" ${s.calc===m[0]?'selected':''}>${m[1]}</option>`).join('')}</select></div>
+      <div class="field full"><label>具体方案 <em>*</em></label><div id="content_inputs"></div></div>
+    </div></div><div class="modal-ft"><button class="btn" onclick="closeOverlay()">取消</button><button class="btn btn-p" onclick="saveSchemeEdit('${s.id}')">保存</button></div></div>`);
+  renderContentInputs(s.factors);
+}
+function openSchemeCreateForm(){
+  const draft={calc:'C_FIXED_VALUE v1',factors:[['BASE_FEE','']]};
+  overlay(`<div class="modal" style="width:760px"><div class="modal-hd"><h3>新增方案</h3><button class="x" onclick="closeOverlay()">×</button></div>
+    <div class="modal-bd"><div id="formErr"></div><div class="form-grid">
+      <div class="field"><label>方案名称 <em>*</em></label><input type="text" id="edit_name" placeholder="请输入方案名称"></div>
+      <div class="field"><label>模块 <em>*</em></label><select id="edit_module" onchange="renderContentInputs()">${EDIT_MODULES.map(m=>`<option value="${m[0]}" ${draft.calc===m[0]?'selected':''}>${m[1]}</option>`).join('')}</select></div>
+      <div class="field full"><label>具体方案 <em>*</em></label><div id="content_inputs"></div></div>
+    </div><div class="hint">方案将自动归属当前业务线与当前场景；未选择场景时，使用该业务线的默认场景。</div></div>
+    <div class="modal-ft"><button class="btn" onclick="closeOverlay()">取消</button><button class="btn btn-p" onclick="saveSchemeCreate()">创建方案</button></div></div>`);
+  renderContentInputs(draft.factors);
+}
+function renderContentInputs(preset){
+  const calc=$('#edit_module').value, factors=preset || [];
+  if(calc==='C_FIXED_VALUE v1'){
+    const raw=(factors.find(f=>f[0]==='BASE_FEE')||['',''])[1].match(/[\d.]+/); const value=raw?raw[0]:'';
+    $('#content_inputs').innerHTML=`<div class="content-row"><span>BASE_FEE =</span><input type="number" min="0" step="0.1" id="fixed_fee" value="${value}"><span>元</span></div>`; return;
+  }
+  if(calc==='C_DISTANCE_STEP v1'){
+    const rows=factors.map(f=>{ const range=f[0].match(/(\d+)-(\d+|无穷大)/), rule=f[1].match(/每增加(\d+)米增加([\d.]+)元/); return range&&rule?[range[1],range[2]==='无穷大'?'':range[2],rule[1],rule[2]]:null; }).filter(Boolean);
+    $('#content_inputs').innerHTML=`<div id="list_rows">${distanceRowsHtml(rows.length?rows:[[0,500,100,0.5]])}</div><button class="btn" type="button" onclick="addContentRow('distance')">＋ 增加一行</button>`; return;
+  }
+  const timeFactors=calc==='C_BASE_TIME v1'?factors.filter(f=>f[0]!=='BASE_FEE'):factors;
+  const rows=timeFactors.map(f=>{ const range=f[0].match(/(\d{2}:\d{2})-(\d{2}:\d{2})/), fee=f[1].match(/[\d.]+/); return range&&fee?[range[1],range[2],fee[0]]:null; }).filter(Boolean);
+  const base=calc==='C_BASE_TIME v1'?((factors.find(f=>f[0]==='BASE_FEE')||['',''])[1].match(/[\d.]+/)||[''])[0]:'';
+  $('#content_inputs').innerHTML=`${calc==='C_BASE_TIME v1'?`<div class="content-row"><span>BASE_FEE =</span><input type="number" min="0" step="0.1" id="base_fee" value="${base}"><span>元</span></div><div class="sec">时间配送费</div>`:''}<div id="list_rows">${timeRowsHtml(rows.length?rows:[['11:00','13:00','1.5']])}</div><button class="btn" type="button" onclick="addContentRow('time')">＋ 增加一行</button>`;
+}
+function addContentRow(type){ $('#list_rows').insertAdjacentHTML('beforeend',type==='distance'?distanceRowsHtml([['','','','']]):timeRowsHtml([['','','']])); }
+function readContentFactors(calc){
+  if(calc==='C_FIXED_VALUE v1') return [['BASE_FEE',$('#fixed_fee').value+' 元']];
+  if(calc==='C_DISTANCE_STEP v1') return [...document.querySelectorAll('.distance-row')].map(r=>{const q=c=>r.querySelector(c).value.trim(); return [`${q('.distance-start')}-${q('.distance-end')||'无穷大'}米`,`每增加${q('.distance-step')}米增加${q('.distance-fee')}元`];});
+  const time=[...document.querySelectorAll('.time-row')].map(r=>{const q=c=>r.querySelector(c).value.trim(); return [`${q('.time-start')}-${q('.time-end')}`,`增加${q('.time-fee')}元`];});
+  return calc==='C_BASE_TIME v1'?[['BASE_FEE',$('#base_fee').value+' 元'],...time]:time;
+}
+function saveSchemeEdit(id){
+  const s=schemeOf(id), name=$('#edit_name').value.trim(), calc=$('#edit_module').value, factors=readContentFactors(calc);
+  const invalid=factors.some(f=>f.some(v=>!v||v==='—元'));
+  if(!name || invalid){ formErr([!name?'方案名称必填':'请完整填写每一行具体方案']); return; }
+  const modules=calc==='C_BASE_TIME v1'?[{name:'基础配送费',items:factors.filter(f=>f[0]==='BASE_FEE')},{name:'时间配送费',items:factors.filter(f=>f[0]!=='BASE_FEE')}]:null;
+  Object.assign(s,{name,calc,factors,modules});
+  logAudit('编辑方案',s.id+' '+name,'成功（后端自动维护生效区间）'); closeOverlay(); toast('已保存方案 '+s.id,'ok'); renderAll();
+}
+function saveSchemeCreate(){
+  const name=$('#edit_name').value.trim(), calc=$('#edit_module').value, factors=readContentFactors(calc);
+  const invalid=factors.some(f=>f.some(v=>!v||v==='—元'));
+  if(!name || invalid){ formErr([!name?'方案名称必填':'请完整填写每一行具体方案']); return; }
+  const scene=state.scene || (SCENES.find(x=>x.biz===state.tenant)||{}).code;
+  const group=(GROUPS.find(x=>x.scene===scene)||{}).code;
+  const fee=(FEES.find(x=>x.group===group)||{}).code;
+  if(!scene||!group||!fee){ formErr(['当前业务线没有可用的场景、费用组或费用项']); return; }
+  const modules=calc==='C_BASE_TIME v1'?[{name:'基础配送费',items:factors.filter(f=>f[0]==='BASE_FEE')},{name:'时间配送费',items:factors.filter(f=>f[0]!=='BASE_FEE')}]:null;
+  const id=nextId('S');
+  schemes.push({id,name,biz:state.tenant,scene,group,fee,status:'DRAFT',start:fmtNow(),end:'—',calc,display:'D_TEXT v3',factors,modules,editor:'学员',approve:'—'});
+  logAudit('新增方案',id+' '+name,'成功'); closeOverlay(); toast('已创建方案 '+id,'ok'); renderAll();
+}
+function cascadeGroups(presetGroup, presetFee){
+  const scene=$('#f_scene').value;
+  const gs = GROUPS.filter(g=>g.scene===scene);
+  $('#f_group').innerHTML = '<option value="">请选择</option>'+gs.map(g=>`<option value="${g.code}" ${g.code===presetGroup?'selected':''}>${g.name}</option>`).join('');
+  cascadeFees(presetFee);
+}
+function cascadeFees(presetFee){
+  const g=$('#f_group').value;
+  const fs = FEES.filter(f=>f.group===g);
+  $('#f_fee').innerHTML = '<option value="">请选择</option>'+fs.map(f=>`<option value="${f.code}" ${f.code===presetFee?'selected':''}>${f.name}${f.required?'（组内必填）':''}</option>`).join('');
+}
+function formErr(list){
+  $('#formErr').innerHTML = `<div class="err-box"><b>保存被拦截（${list.length} 项）</b><br>`+list.map(e=>'· '+e).join('<br>')+'</div>';
+  $('#formErr').scrollIntoView({block:'nearest'});
+}
+function saveScheme(id){
+  const g=k=>$('#f_'+k).value.trim();
+  const name=g('name'), scene=g('scene'), group=g('group'), fee=g('fee');
+  const old = id ? schemeOf(id) : null;
+  const autoInterval=!!(old && old.status==='PUBLISHED');
+  const start=autoInterval ? old.start : g('start').replace('T',' ');
+  const end=autoInterval ? old.end : (g('end').replace('T',' ') || '—');
+  const calc=g('calc'), display=g('display');
+  const factors = g('factors').split('\n').map(l=>l.trim()).filter(Boolean)
+                  .map(l=>{const i=l.indexOf('='); return i<0?[l,'—']:[l.slice(0,i).trim(), l.slice(i+1).trim()];});
+  const modules = calc==='C_BASE_TIME v1' ? [
+    {name:'基础配送费',items:factors.filter(f=>f[0]==='BASE_FEE')},
+    {name:'时间配送费',items:factors.filter(f=>f[0]!=='BASE_FEE')},
+  ] : null;
+  const errs=[];
+  if(!name) errs.push('方案名称必填');
+  if(!scene||!group||!fee) errs.push('场景／费用组／费用必须逐级选到费用项（发布单元是费用组）');
+  if(!id && !start) errs.push('生效开始时间必填——定时生效由时间区间自身切换，不依赖 job');
+  if(!calc||!display) errs.push('<b>【双模板成对】</b>计算模板与展示模板必须同时选定，缺一不发：展示写的与算的必须一致');
+  if(!factors.length) errs.push('至少一条因子赋值（缺因子下游算不出来）');
+  if(start && end!=='—' && T(end)<=T(start)) errs.push('结束时间必须晚于开始时间（区间为左闭右开）');
+  if(errs.length){ formErr(errs); return; }
+
+  if(id){
+    const s=schemeOf(id); Object.assign(s,{name,scene,group,fee,start,end,calc,display,factors,modules});
+    logAudit('编辑方案', s.id+' '+name, '成功（后端自动维护生效区间）'); toast('已保存方案 '+s.id,'ok');
+  }else{
+    const nid=nextId('S');
+    schemes.push({id:nid, name, biz:state.tenant, scene, group, fee, status:'DRAFT', start, end, calc, display, factors, modules, editor:'学员', approve:'—'});
+    logAudit('新增方案草稿', nid+' '+name, '成功');
+    toast('已创建草稿 '+nid+'（DRAFT，需提审后由发布事务转正）','ok',3400);
+  }
+  closeOverlay(); renderAll();
+}
+function delScheme(id){
+  const s=schemeOf(id);
+  if(bindings.some(b=>b.schemeId===id)){ toast('方案已有绑定关系，请先解除绑定后再删除','warn'); return; }
+  confirmBox('确定删除方案 '+id+'「'+esc(s.name)+'」？','无绑定关系的方案可删除。',()=>{
+    schemes = schemes.filter(x=>x.id!==id);
+    logAudit('删除方案', id+' '+s.name, '成功'); toast('已删除方案 '+id,'ok'); renderAll();
+  });
+}
+
+/* ------------------------------ 9. 绑定表单（新增 / 编辑 + I4 预检） ------------------------------ */
+function openBindingForm(id){
+  const b = id ? bindings.find(x=>x.id===id) : null;
+  bindEditId = id||'';
+  const list = s_schemes();   // 仅列当前业务线（与顶部场景下拉）下的方案
+  overlay(`<div class="modal">
+    <div class="modal-hd"><h3>${b?'编辑绑定关系':'新增绑定关系'} ${b?b.id:''}</h3><button class="x" onclick="closeOverlay()">×</button></div>
+    <div class="modal-bd">
+      <div id="formErr"></div>
+      <div class="form-grid">
+        <div class="field full"><label>方案 <em>*</em></label><select id="b_scheme" onchange="renderDimPick()">
+          <option value="">请选择（仅本业务线下方案）</option>
+          ${list.map(s=>`<option value="${s.id}" ${b&&b.schemeId===s.id?'selected':''}>${s.id} · ${esc(s.name)} · ${feeOf(s.fee).name} · ${s.status==='DRAFT'?'草稿':'已发布'}</option>`).join('')}</select></div>
+        <div class="field"><label>维度 <em>*</em></label><select id="b_dim" onchange="renderDimPick()">
+          <option value="">请选择</option>${DIM_CODES.map(d=>`<option value="${d.code}" ${b&&b.dimCode===d.code?'selected':''}>${d.name}</option>`).join('')}</select></div>
+        <div class="field"><label>匹配模式 <em>*</em></label><select id="b_match" onchange="renderDimPick()">
+          <option value="IN" ${!b||b.match==='IN'?'selected':''}>IN 包含（只对选中值生效）</option>
+          <option value="NOT_IN" ${b&&b.match==='NOT_IN'?'selected':''}>NOT_IN 排除（除选中值外均生效）</option></select>
+          <div class="hint">“默认 + 专属”范式：默认方案用 NOT_IN 补集表达</div></div>
+        <div class="field full"><label>维度值 <em>*</em></label><div id="b_values" class="chips"></div>
+          <div class="hint" id="b_candTip">先选维度，再勾选值</div></div>
+      </div>
+    </div>
+    <div class="modal-ft"><button class="btn" onclick="closeOverlay()">取消</button>
+      <button class="btn btn-p" onclick="saveBinding('${id||''}')">${b?'保存':'创建绑定'}</button></div>
+  </div>`);
+  renderDimPick(b?b.values:null);
+}
+function renderDimPick(preset){
+  if(!$('#b_values')) return;
+  const dim=$('#b_dim').value, match=$('#b_match').value;
+  const checked = preset || (bindings.find(x=>x.id===bindEditId)||{}).values || [];
+  const cand = (dimOf(dim).candidates||[]);
+  $('#b_values').innerHTML = cand.length ? cand.map(v=>
+    `<label class="chip" style="cursor:pointer;padding:4px 10px"><input type="checkbox" value="${esc(v)}" ${checked.includes(v)?'checked':''}> ${esc(v)}</label>`).join('')
+    : '<span class="hint">请先选择维度</span>';
+  $('#b_candTip').innerHTML = '候选集来自维度字典（'+(cand.length||0)+' 个值）。'
+    + (match==='NOT_IN' ? '<b>NOT_IN</b> = 对候选全集取补集，勾得越多、覆盖越少。' : '未声明该维度 = 对候选全集生效。');
+}
+function saveBinding(id){
+  const schemeId=$('#b_scheme').value, dimCode=$('#b_dim').value, match=$('#b_match').value;
+  const values=[...$('#b_values').querySelectorAll('input:checked')].map(i=>i.value);
+  const sc = schemeOf(schemeId);
+  const errs=[];
+  if(!schemeId) errs.push('请选择方案');
+  if(!dimCode) errs.push('请选择维度');
+  if(!values.length) errs.push('至少勾选一个维度值');
+  if(match==='NOT_IN' && values.length===(dimOf(dimCode).candidates||[]).length)
+    errs.push('<b>NOT_IN 排除了全部候选值</b> = 这一版永不生效，请核实（属配置语义错误，不是冲突）');
+  if(schemeId && dimCode){
+    const dup = bindings.find(x=>x.schemeId===schemeId && x.dimCode===dimCode && x.id!==id);
+    if(dup) errs.push('该方案在【'+dimOf(dimCode).name+'】维度已有绑定行 '+dup.id+'：同一方案同一维度只保留一行，要增减值请去改那一行（否则语义二义）');
+  }
+  if(!errs.length){
+    const extra = {id:id||'__new__', schemeId, dimCode, match, values, start:sc.start, end:sc.end};
+    const bad = checkI4(schemeId, dimCode, id||null, extra);
+    if(bad.length){
+      errs.push('<b>【不变式 I4 · 维度互斥】</b>与同费用「'+feeOf(sc.fee).name+'」下的已发布实例命中集合相交：');
+      bad.forEach(x=>errs.push('　与 '+x.scheme.id+'「'+esc(x.scheme.name)+'」共有 <b>'+x.values.join('、')+'</b>（'+dimOf(dimCode).name+'），'+
+        '且区间 ['+(sc.start||'—')+' ～ '+(sc.end||'—')+') 与 ['+x.scheme.start+' ～ '+x.scheme.end+') 重叠'));
+      errs.push('后果：同一（费用 × 维度点 × 时点）会命中两份定价，下游无从决胜——即使编辑期放过，发布事务的<b>终态复核</b>也会整组回滚。'
+        +'解法：缩小值集、把其中一份改成 <code>NOT_IN</code> 补集表达、或另配不重叠的生效时间段。');
+    }
+  }
+  if(errs.length){ formErr(errs); return; }
+  if(sc.status==='PUBLISHED') toast('提示：该绑定挂在已发布版本上，真实系统不允许直接改——需新建版本发布（此处演示放开）','warn',3600);
+
+  if(id){
+    const b=bindings.find(x=>x.id===id); Object.assign(b,{schemeId,dimCode,match,values,start:sc.start||'—',end:sc.end||'—'});
+    logAudit('编辑绑定', id+' → '+sc.id+' ／ '+dimOf(dimCode).name+' '+match+' ['+values.join('、')+']', '成功（冲突预检通过）');
+    toast('已保存绑定 '+id,'ok');
+  }else{
+    const nid=nextId('D');
+    bindings.push({id:nid, schemeId, dimCode, match, values, start:sc.start||'—', end:sc.end||'—'});
+    logAudit('新增绑定', nid+' → '+sc.id+' ／ '+dimOf(dimCode).name+' '+match+' ['+values.join('、')+']', '成功（冲突预检通过）');
+    toast('已创建绑定 '+nid+'，冲突预检通过','ok');
+  }
+  bindEditId=''; closeOverlay(); renderAll();
+}
+function delBinding(id){
+  const b=bindings.find(x=>x.id===id), sc=schemeOf(b.schemeId);
+  confirmBox('确定删除绑定 '+id+'？', sc.status==='PUBLISHED'
+    ? '该绑定属于已发布版本，删除会直接改变当前生效集（真实系统须走新版本发布）。'
+    : '草稿版本的绑定，直接删除。', ()=>{
+    bindings = bindings.filter(x=>x.id!==id);
+    logAudit('删除绑定', id+' ／ '+sc.id, '成功'); toast('已删除绑定 '+id,'ok'); renderAll();
+  });
+}
+
+/* ------------------------------ 10. 查看：方案内容模态框 ------------------------------ */
+function viewScheme(id){
+  const s=schemeOf(id);
+  const modules=s.modules || [{name:'方案内容',items:s.factors}];
+  overlay(`<div class="modal" style="width:640px">
+    <div class="modal-hd"><h3>查看方案 · ${s.id} ${esc(s.name)}</h3><button class="x" onclick="closeOverlay()">×</button></div>
+    <div class="modal-bd">
+      <div class="sec">关联模板</div><div class="mono">${esc(templateName(s.calc))}</div>
+      ${modules.map(module=>`<div class="sec">${esc(module.name)}</div>
+        <table><thead><tr><th>配置项</th><th>配置内容</th></tr></thead><tbody>
+          ${module.items.map(item=>`<tr><td style="width:180px"><b>${esc(item[0])}</b></td><td>${esc(item[1])}</td></tr>`).join('')}
+        </tbody></table>`).join('')}
+    </div>
+    <div class="modal-ft"><button class="btn btn-p" onclick="closeOverlay()">关闭</button></div>
+  </div>`);
+}
+
+function timeSurcharge(value){
+  const m=String(value).trim().match(/^(\d{1,2}):(\d{2})$/); if(!m) return null;
+  const mins=Number(m[1])*60+Number(m[2]);
+  if(mins>=660 && mins<780) return 1.5;
+  if(mins>=1060 && mins<1110) return 2;
+  return 0;
+}
+function distanceSurcharge(meters){
+  const d=Number(meters); if(!Number.isFinite(d)||d<0) return null;
+  if(d<=500) return Math.ceil(d/100)*0.5;
+  if(d<=2500) return 2.5+Math.ceil((d-500)/300)*1;
+  if(d<=3500) return 9.5+Math.ceil((d-2500)/500)*1.5;
+  return 12.5+Math.ceil((d-3500)/1000)*2.5;
+}
+function calculateScheme(s,value){
+  if(s.calc==='C_FIXED_VALUE v1') return {input:value,result:5,unit:'元'};
+  if(s.calc==='C_DISTANCE_STEP v1'){
+    const result=distanceSurcharge(value); return result===null?{input:value,error:'请输入大于等于 0 的距离（米）'}:{input:value,result,unit:'元'};
+  }
+  if(s.calc==='C_TIME_SURCHARGE v1' || s.calc==='C_BASE_TIME v1'){
+    const fee=timeSurcharge(value); if(fee===null) return {input:value,error:'请输入 HH:mm 格式的时间'};
+    return {input:value,result:(s.calc==='C_BASE_TIME v1'?5:0)+fee,unit:'元'};
+  }
+  return {input:value,error:'该模板暂未配置测算规则'};
+}
+function openCalculator(id){
+  const s=schemeOf(id);
+  const isDistance=s.calc==='C_DISTANCE_STEP v1', isTime=['C_TIME_SURCHARGE v1','C_BASE_TIME v1'].includes(s.calc);
+  const hint=isDistance?'每行输入一个距离（单位：米），可一次输入多个距离。':isTime?'每行输入一个时间（HH:mm），可一次输入多个时间。':'固定值模板无需输入；每行会返回相同结果。';
+  overlay(`<div class="modal" style="width:620px">
+    <div class="modal-hd"><h3>方案测算 · ${s.id} ${esc(s.name)}</h3><button class="x" onclick="closeOverlay()">×</button></div>
+    <div class="modal-bd"><div class="sec">关联模板</div><div class="mono">${esc(templateName(s.calc))}</div>
+      <div class="field" style="margin-top:16px"><label>输入值（每行一个）</label><textarea id="calc_values" placeholder="${isDistance?'100\n800\n2800':isTime?'11:30\n18:00':'任意值'}"></textarea><div class="hint">${hint}</div></div>
+      <div id="calc_result" style="margin-top:16px"></div>
+    </div>
+    <div class="modal-ft"><button class="btn" onclick="closeOverlay()">取消</button><button class="btn btn-p" onclick="runCalculator('${s.id}')">计算</button></div>
+  </div>`);
+}
+function runCalculator(id){
+  const s=schemeOf(id); const values=$('#calc_values').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  const inputs=values.length?values:['—']; const results=inputs.map(v=>calculateScheme(s,v));
+  $('#calc_result').innerHTML=`<div class="sec">测算结果</div><table><thead><tr><th>输入值</th><th>结果</th></tr></thead><tbody>${results.map(r=>`<tr><td>${esc(r.input)}</td><td>${r.error?`<span style="color:var(--err)">${esc(r.error)}</span>`:`<b>${r.result} ${r.unit}</b>`}</td></tr>`).join('')}</tbody></table>`;
+}
+
+/* ------------------------------ 11. 其他导航页（只读，帮学生建立全景） ------------------------------ */
+function renderScenePage(){
+  const scenes = SCENES.filter(s=>s.biz===state.tenant);
+  return `<div class="page-intro"><h2>场景配置</h2>
+    <p>场景用于定义定价的业务边界，并维护该场景可使用的因子范围。费用组、费用项与定价方案均通过场景建立归属关系。</p></div>
+    <div class="card"><div class="card-hd"><h3>${bizName(state.tenant)} · 场景列表</h3></div>
+      <table><thead><tr><th>场景 ID</th><th>场景名称</th><th>可用因子</th><th>关联费用组</th><th>定价方案</th></tr></thead><tbody>
+      ${scenes.map((s,i)=>{ const groups=GROUPS.filter(g=>g.scene===s.code); const count=schemes.filter(x=>x.scene===s.code).length;
+        return `<tr><td><b>${100+i+1}</b></td><td>${s.name}</td>
+          <td>${s.factors.split(',').map(f=>`<span class="chip">${f}</span>`).join(' ')}</td>
+          <td>${groups.map(g=>`<span class="chip">${g.name}</span>`).join(' ')||'—'}</td>
+          <td><span class="ver">${count} 个方案版本</span></td></tr>`;
+      }).join('')}</tbody></table></div>
+    <div class="note"><b>配置关系：</b>业务线 → 场景 → 费用组 → 费用项。场景中的因子白名单会约束后续方案配置，避免在不适用的业务场景中使用错误的计价输入。</div>`;
+}
+
+function renderFeeGroupPage(){
+  const groups = GROUPS.filter(g=>sceneOf(g.scene).biz===state.tenant);
+  return `<div class="page-intro"><h2>费用组配置</h2>
+    <p>费用组必须关联一个定价场景，并由多个费用项组成，用于组织同一场景下需要整体配置、审批与发布的费用。</p></div>
+    <div class="card"><div class="card-hd"><h3>${bizName(state.tenant)} · 费用组列表</h3></div>
+      <table><thead><tr><th>费用组 ID</th><th>费用组名称</th><th>关联场景</th><th>费用项</th><th>已配置方案</th></tr></thead><tbody>
+      ${groups.map((g,i)=>{ const fees=FEES.filter(f=>f.group===g.code); const count=schemes.filter(s=>s.group===g.code).length;
+        return `<tr><td><b>${200+i+1}</b></td><td>${g.name}</td>
+          <td><span class="chip">${sceneOf(g.scene).name} · ${g.scene}</span></td>
+          <td>${fees.map(f=>`<div>${f.name}${f.required?'<span class="sub">（必填）</span>':''}</div>`).join('')}</td>
+          <td><span class="ver">${count} 个方案版本</span></td></tr>`;
+      }).join('')}</tbody></table></div>
+    <div class="note"><b>关联规则：</b>场景 → 费用组 → 费用项。费用组关联场景，费用项组成费用组；发布时以费用组为事务单元，确保组内费用不会出现新旧版本混用。</div>`;
+}
+
+function renderFeePage(){
+  const fees=FEES.filter(f=>sceneOf(groupOf(f.group).scene).biz===state.tenant);
+  return `<div class="page-intro"><h2>费用管理</h2>
+    <p>费用是可单独定价的最小业务单元。每个费用归属一个费用组，并通过费用组关联到对应的定价场景。</p></div>
+    <div class="card"><div class="card-hd"><h3>${bizName(state.tenant)} · 费用列表</h3></div>
+      <table><thead><tr><th>费用 ID</th><th>费用名称</th><th>所属费用组</th><th>关联场景</th><th>组内顺序</th><th>是否必填</th><th>已配置方案</th></tr></thead><tbody>
+      ${fees.map((f,i)=>{ const group=groupOf(f.group), scene=sceneOf(group.scene), count=schemes.filter(s=>s.fee===f.code).length;
+        return `<tr><td><b>${300+i+1}</b></td><td>${f.name}</td><td><span class="chip">${group.name}</span></td>
+          <td><span class="chip">${scene.name}</span></td><td>${f.order}</td>
+          <td>${f.required?'<span class="tag pub">必填</span>':'<span class="tag off">选填</span>'}</td><td><span class="ver">${count} 个方案版本</span></td></tr>`;
+      }).join('')}</tbody></table></div>
+    <div class="note"><b>配置关系：</b>先在场景下创建费用组，再在费用组中维护费用项；定价方案最终绑定到具体费用，以便按费用粒度配置、测算和发布。</div>`;
+}
+
+function renderImportDataPage(){
+  const task=importTasks.find(x=>x.id===state.importTaskId);
+  if(task){
+    return `<div class="page-intro"><h2>导入任务详情</h2><p>${esc(task.fileName)} · ${task.type==='scheme'?'方案导入':'维度绑定导入'} · ${task.createdAt}</p></div>
+      <div class="card"><div class="card-hd"><h3>解析数据列表</h3><div style="flex:1"></div><button class="btn" onclick="state.importTaskId=null;renderAll()">返回任务列表</button><button class="btn btn-p" onclick="task.status='已完成';renderAll();toast('导入任务已完成','ok')">确认导入</button></div>
+      <table><thead><tr>${task.headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${task.rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  const rows=importTasks.map(t=>`<tr><td><b>${t.id}</b></td><td>${esc(t.fileName)}</td><td>${t.type==='scheme'?'方案导入':'维度绑定导入'}</td><td>${t.rows.length} 条</td><td>${t.createdAt}</td><td><span class="tag ${t.status==='已完成'?'pub':'draft'}">${t.status}</span></td><td><button class="mini" onclick="state.importTaskId=${t.id};renderAll()">任务详情</button></td></tr>`).join('');
+  return `<div class="page-intro"><h2>导入数据</h2><p>每个上传的 Excel 文件都会生成一条导入任务。打开任务详情可查看文件解析出的列表数据并确认导入。</p></div>
+    <div class="card"><div class="card-hd"><h3>导入任务列表</h3></div><table><thead><tr><th>任务 ID</th><th>文件名称</th><th>导入类型</th><th>数据量</th><th>创建时间</th><th>状态</th><th>操作</th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="empty">暂无导入任务</td></tr>'}</tbody></table></div>`;
+}
+
+function renderFactorPage(){
+  const scenes = SCENES.filter(s=>s.biz===state.tenant);
+  return `<div class="page-intro"><h2>因子配置</h2>
+    <p>因子是定价方案的输入变量。场景通过因子范围控制可选项，方案模块据此填写具体规则。</p></div>
+    <div class="card"><div class="card-hd"><h3>因子列表</h3></div><table><thead><tr><th>因子 ID</th><th>名称</th><th>值形态</th><th>取值校验</th><th>被本业务线哪些场景引用</th></tr></thead><tbody>
+    ${FACTORS.map((x,i)=>`<tr><td><b>${400+i+1}</b></td><td>${x.name}</td><td><span class="ver">${x.type}</span></td><td>${x.rule}</td>
+      <td>${scenes.filter(s=>s.factors.includes(x.code)).map(s=>`<span class="chip">${s.name}</span>`).join(' ')||'—'}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="note"><b>使用规则：</b>方案编辑时选择模块后，按模块定义的输入格式填写具体方案；系统按场景可用因子校验内容。</div>`;
+}
+function renderTemplatePage(){
+  const templates=[
+    {id:1,name:'固定值',logic:'BASE_FEE = 固定金额',input:'输入基础配送费',code:'C_FIXED_VALUE v1'},
+    {id:2,name:'距离步长',logic:'按距离区间、步长和加价规则累加',input:'逐行填写开始距离、结束距离、步长和金额',code:'C_DISTANCE_STEP v1'},
+    {id:3,name:'时间加价',logic:'命中时间区间后增加对应金额',input:'逐行填写开始时间、结束时间和金额',code:'C_TIME_SURCHARGE v1'},
+    {id:4,name:'基础配送费+时间配送费',logic:'基础配送费叠加命中时段加价',input:'分别填写基础费与时间区间规则',code:'C_BASE_TIME v1'},
+  ];
+  return `<div class="page-intro"><h2>模板配置</h2>
+    <p>一个方案只关联一个模块。模块决定具体方案的编辑格式和测算输入，不再区分计算模板与展示模板。</p></div>
+    <div class="card"><div class="card-hd"><h3>模块列表</h3></div><table><thead><tr><th>模块 ID</th><th>模块名称</th><th>规则说明</th><th>编辑格式</th><th>关联方案</th></tr></thead><tbody>
+    ${templates.map(t=>`<tr><td><b>${t.id}</b></td><td>${t.name}</td><td>${t.logic}</td><td class="sub">${t.input}</td>
+      <td>${schemes.filter(s=>s.calc===t.code).map(s=>numericId(s.id)).join('、')||'—'}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="note"><b>测算规则：</b>固定值直接返回基础配送费；距离和时间模块支持每行一个或多个输入值批量测算；组合模块返回基础费与命中时段加价之和。</div>`;
+}
+function renderApproval(){
+  const steps=[['提交变更','运营在方案管理中修改名称、模块或具体规则'],
+    ['校验模块','校验固定值、距离列表、时间列表或组合模块的填写格式'],
+    ['校验绑定','校验已绑定方案仍具备有效的维度关系'],
+    ['维护区间','后端根据当前生效配置自动维护方案生效区间'],
+    ['发布生效','审批通过后同步发布当前配置'],
+    ['记录任务','记录操作和导入任务，便于追踪变更来源']];
+  return `<div class="page-intro"><h2>审批与发布</h2>
+    <p>已发布方案允许修改。提交后由后端校验模块内容和维度绑定，并自动维护生效区间。</p></div>
+    <div class="card"><div class="card-hd"><h3>发布流程</h3></div><div class="card-bd"><div class="chain">
+      ${steps.map((x,i)=>`<div class="chain-i now"><b>Step ${i+1} · ${x[0]}</b><div><small>${x[1]}</small></div></div>`).join('')}
+    </div></div></div>
+    <div class="card"><div class="card-hd"><h3>本业务线方案状态</h3></div><table><thead><tr><th>方案</th><th>费用组</th><th>状态</th><th>说明</th></tr></thead><tbody>
+      ${t_schemes().map(s=>`<tr><td>${s.id} ${esc(s.name)}</td><td>${groupOf(s.group).name||'—'}</td><td>${statusTag(s.status)}</td>
+        <td class="sub">${s.status==='DRAFT'?'草稿：可继续编辑并提交审批':'已发布：可编辑，后端自动维护生效区间'}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="note"><b>当前口径：</b>方案规则以单一模块维护；有绑定关系的方案不能删除，需先解除绑定。</div>`;
+}
+function renderDelivery(){
+  const apis=[['effectiveSet','拉取当前生效集','按业务／组返回轻列表（feeId, schemeId, start_time, content_hash），下游轮询感知变更'],
+    ['schemeAt','按时点取方案内容','给定方案 + 时点 t → 返回该时点生效版本的全量内容（维度／因子／双模板）'],
+    ['hit','维度点消歧','给定费用 + 维度点 + 时点 → 唯一命中一个实例（由 I4 保证无需优先级决胜）'],
+    ['effectiveSetAt','历史生效集回放','任意时点的整组生效配置，支撑审计与客诉']];
+  const sample = schemeOf('S104');
+  return `<div class="page-intro"><h2>分发接口（只读、幂等、直查 DB）</h2>
+    <p>对下游只开放四只读接口，全部按 <code>[start, end)</code> 谓词直查 DB。本平台不感知下游流量压力，只保证“给出去的数据是对的”。</p></div>
+    <div class="card"><div class="card-bd">
+      ${apis.map(a=>`<div class="api-item"><code>GET /delivery/${a[0]}</code> · ${a[1]}<div class="hint">${a[2]}</div></div>`).join('')}
+      <div class="mono">// hit 请求示例
+{ "feeCode": "U_KS_NIGHT", "time": "2026-09-29 22:30",
+  "dimValues": { "CITY": "上海", "TIME_SLOT": "夜宵 21:00-06:00" } }
+
+// 响应：唯一命中 ${sample.id}（${esc(sample.name)}），content_hash 可本地复算
+// 命中 0 个 → 回落到组内默认方案；命中 &gt;1 个 → 属数据事故，接口直接报错</div>
+    </div></div>
+    <div class="note"><b>容量口径：</b>读压 &lt;100 QPS，所以<b>不上缓存</b>（将来 QPS 上升可无损重加，预案不预建）；
+    检索前置靠维度绑定表的<b>「维度值 + 时间区间」联合索引</b>——对应大纲第 4 课 SQL 优化专题。</div>`;
+}
+function renderAudit(){
+  return `<div class="page-intro"><h2>审计日志</h2>
+    <p>谁改的、改了什么、结果如何——全部写操作留痕；配合时间版本行，可回放任意历史时点的配置。你在本页面上每一次新增／编辑／删除（包括被拦截的）都会实时落到这里。</p></div>
+    <div class="card"><div class="card-hd"><h3>操作流水（最新在上）</h3></div><table><thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>对象</th><th>结果</th></tr></thead><tbody>
+    ${auditLogs.slice(0,30).map(l=>`<tr><td>${l.time}</td><td>${esc(l.operator)}</td><td><span class="ver">${esc(l.action)}</span></td>
+      <td>${esc(l.object)}</td><td class="sub">${esc(l.result)}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="note"><b>为什么它属于“核心逻辑”而非附属功能：</b>定价是跟钱相关的经营数据，“当时到底发的是什么价”必须能自证。
+    审计 + 版本行回放，取代了向下游上报核查那套重机制。</div>`;
+}
+function renderAbout(){
+  const path=[['切业务线（租户）','顶部三条业务线就是租户口径：用户配送费（C端）、骑手配送费（向骑手结算）、商家配送费（向商家收取）——同一平台伺候三方、数据彼此隔离。先点两下看下方列表怎么变'],
+    ['用场景下拉收敛列表','业务线下方、页签上方的「定价场景」下拉：每条业务线下都是快送／专送／混合送三个场景。选一个，两个页签的列表与角标同时收敛（它就是列表的第一层过滤器）'],
+    ['方案页签看版本链','用户配送费·快送下，S101 → S102 → S103 是同一条链 R-A：改价不是 update 一行，而是“一行一个时间段”。点 S102 的「查看」看右侧时间轴'],
+    ['新增方案 · 演 I1','方案页签点新增（场景已默认带出快送）→ 快送费用组／快送配送费 → 版本链选 R-A → 生效区间填 2026-10-15 ~ 2026-12-31（与 S102 重叠）→ 保存被拦'],
+    ['新增方案 · 演双模板','再走到表单，只选计算模板、不选展示模板 → 保存被拦（展示与计算不一致是定价重大事故）'],
+    ['绑定页签 · 演预检通过','新增绑定 → 方案 S104、维度「城市」、IN、勾「上海」→ 通过（该费用下没有别的已发布实例）'],
+    ['绑定页签 · 演 I4 拦截','（先把场景下拉切回快送）编辑绑定 D007（S110 上海快送恶劣天气附加）→ 维度值再加勾「杭州」→ 保存：与 S105 的 NOT_IN[上海]（= 除上海外全集）在「杭州」相交 → 拦截并列出共有值'],
+    ['看 NOT_IN 补集','对比 D007 与 D004：S110 管上海、S105 管除上海以外——IN 与 NOT_IN 互补共存，这就是“默认 + 专属”范式（骑手配送费下的 D201/D202 是同一模式的第二份数据）'],
+    ['演不可删','删一条 PUBLISHED 方案 → 被拒，弹窗解释“发布后内容不可变、回放即审计”'],
+    ['扫其他导航','因子中心／模板中心／审批与发布／分发接口／审计日志——各停留 20 秒，告诉学生哪一周会亲手写它']];
+  return `<div class="page-intro"><h2>演示说明（带教路径）</h2>
+    <p>纯前端假数据，第 1 课现场把“配置平台的逻辑”走一遍——<b>不讲代码，只走业务闭环</b>，约 8 分钟。</p></div>
+    <div class="card"><div class="card-bd"><div class="chain">
+      ${path.map((x,i)=>`<div class="chain-i ${i<2?'now':''}"><b>${i+1}. ${x[0]}</b><div><small>${x[1]}</small></div></div>`).join('')}
+    </div></div></div>
+    <div class="note"><b>收口一句话：</b>页面上每一次“保存被拦截”都不是 bug，而是设计文档里那条不变式在界面上活了一次——
+    I1（一个实例任一时点至多一个版本）、I4（同费用实例维度互斥）、双模板成对、已发布不可变。</div>
+    <div class="card"><div class="card-hd"><h3>本演示不演什么</h3></div><div class="card-bd"><p style="margin:0;color:var(--ink2);font-size:13px">
+      审批流的真实状态机、发布事务的锁与顺序、content_hash 的 canonical 算法、因子校验的完整规则、登录与权限、批量导入与线程池——
+      这些都在 docs/ 设计文档里，按大纲第 2~5 周逐个亲手实现。</p></div></div>`;
+}
+
+/* ------------------------------ 12. 弹层通用 + 启动 ------------------------------ */
+function openImport(type){
+  const name=type==='scheme'?'方案':'维度绑定';
+  overlay(`<div class="modal" style="width:600px"><div class="modal-hd"><h3>导入${name}</h3><button class="x" onclick="closeOverlay()">×</button></div>
+    <div class="modal-bd"><div class="page-intro" style="margin:0"><h2>导入文件</h2><p>请先下载模板并按要求填写，再上传 Excel 文件。查看导入数据会跳转到导入任务页面。</p></div>
+      <div style="margin-top:16px"><a class="btn" href="pricing-import-template.xlsx" download>下载模板</a></div>
+      <div class="field" style="margin-top:16px"><label>上传 Excel 文件 <em>*</em></label><input type="file" id="import_file" accept=".xlsx,.xls"></div></div>
+    <div class="modal-ft"><button class="btn" onclick="closeOverlay()">取消</button><button class="btn btn-p" onclick="showImportData('${type}')">查看导入数据 →</button></div></div>`);
+}
+function showImportData(type){
+  const file=$('#import_file').files[0]; if(!file){ toast('请先选择 Excel 文件','warn'); return; }
+  const isScheme=type==='scheme', rows=isScheme?
+    [['1001','基础配送费','固定值','BASE_FEE = 5 元','张三'],['1002','距离加价配送费','距离步长','0-500米 每增加100米增加0.5元','张三']]:
+    [['201','城市','上海','1001','2026-10-01 00:00','张三'],['301','配送区域','G-001','1002','2026-10-01 00:00','李四']];
+  const headers=isScheme?['方案 ID','方案名称','模块','具体方案','创建人']:['维度 ID','维度类型','维度名称','方案 ID','开始时间','创建人'];
+  const task={id:++state.seq,fileName:file.name,type,rows,headers,status:'待确认',createdAt:fmtNow()}; importTasks.unshift(task);
+  closeOverlay(); state.importTaskId=task.id; state.page='importData'; renderAll();
+}
+function overlay(html, isDrawer){
+  $('#overlay').innerHTML = `<div class="mask" style="${isDrawer?'justify-content:flex-end;align-items:stretch':''}"
+    onclick="if(event.target===this)closeOverlay()">${html}</div>`;
+}
+function closeOverlay(){ const o=$('#overlay'); if(o) o.innerHTML=''; bindEditId=''; }
+function confirmBox(title, sub, onOk){
+  window.__confirm = onOk;
+  overlay(`<div class="modal" style="width:500px">
+    <div class="modal-hd"><h3>请确认</h3><button class="x" onclick="closeOverlay()">×</button></div>
+    <div class="modal-bd"><div style="font-size:14px;font-weight:600;margin-bottom:6px">${title}</div>
+      <div style="font-size:12.5px;color:var(--ink2)">${sub}</div></div>
+    <div class="modal-ft"><button class="btn" onclick="closeOverlay()">取消</button>
+      <button class="btn btn-p" onclick="okConfirm()">确认</button></div></div>`);
+}
+function okConfirm(){ const f=window.__confirm; closeOverlay(); window.__confirm=null; if(f) f(); }
+
+renderAll();
+</script>
+</body>
+</html>

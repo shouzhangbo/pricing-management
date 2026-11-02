@@ -1,7 +1,7 @@
 # 接口文档
 
-> **版本：v0.1（2026-10-10）**  
-> 本文档以当前代码实现为准，用于管理端联调；设计文档中已定义但尚未实现的接口会明确标注为“规划中”，不可据此调用。
+> **版本：v0.2（2026-10-24）**
+> 本文档区分“当前可调用接口”和“当前需求但尚未实现接口”。审批流暂不属于当前版本，相关接口和状态不纳入本阶段页面联调。
 
 ## 1. 基本约定
 
@@ -11,6 +11,9 @@
 - 时间字段使用 ISO-8601 本地时间，例如 `2026-10-10T14:30:00`。
 - 分页从 `pageNo=1` 开始，默认每页 `20` 条，`pageSize` 最大 `100`。
 - 当前版本尚未接入鉴权；接入网关或认证组件后，应在本文档补充认证头、权限点及审计操作者传递规则。
+- 当前版本不包含审批流；草稿可直接进入“发布前校验/发布”流程。
+- 管理端编辑以“费用组”为页面聚合边界；方案、维度、因子和模板接口是组编辑页的子资源。
+- `dimValues`、因子值、模板内容均使用固定 JSON 结构，不能把任意 JSON 当作稳定前端契约。
 
 ## 2. 通用响应与错误
 
@@ -57,6 +60,39 @@
 | `startTime` / `endTime` | datetime | 版本生效区间；草稿阶段可能为空 |
 | `remark` | string | 备注 |
 | `rowVersion` | int | 乐观锁版本号 |
+
+### 3.2.1 方案编辑上下文 `SchemeEditorView`（规划中）
+
+用于费用组编辑页一次加载方案主信息、维度、因子赋值和模板引用，避免前端依赖多个接口自行拼装。
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `scheme` | `SchemeView` | 方案主表 |
+| `dimensions` | array | 维度绑定列表 |
+| `factorValues` | array | 因子赋值列表 |
+| `templates` | array | CALC/DISPLAY 模板引用 |
+| `editable` | boolean | 当前是否允许编辑 |
+| `editReason` | string | 不可编辑原因 |
+
+### 3.2.2 费用组编辑上下文 `FeeGroupEditorView`（规划中）
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `group` | `FeeGroupView` | 费用组信息 |
+| `fees` | array | 组内费用项及其方案编辑上下文 |
+| `rowVersion` | int | 费用组编辑版本 |
+| `validation` | object | 最近一次校验结果，可为空 |
+
+### 3.2.3 发布校验结果 `ValidationReport`（规划中）
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `valid` | boolean | 是否允许发布 |
+| `errors` | array | 阻断发布的错误列表 |
+| `warnings` | array | 不阻断发布的提示列表 |
+| `errors[].path` | string | 前端定位路径，如 `fees[0].schemes[1].dimensions` |
+| `errors[].code` | string | 稳定错误码 |
+| `errors[].message` | string | 面向运营的错误说明 |
 
 ### 3.3 维度绑定 `DimensionView`
 
@@ -227,7 +263,30 @@
 
 `bizCode`、`groupNo` 均必填且不可为空。返回 `ApiResponse<FeeItemView[]>`。
 
-## 5. 规划中接口（不可调用）
+## 5. 当前需求接口（规划中，审批除外）
+
+以下接口是当前项目规划和费用组配置页面需要的业务契约，尚未实现，不能联调。
+
+| 接口 | 用途 |
+|---|---|
+| `GET /api/fee-groups/{groupNo}/editor?bizCode=...` | 一次加载费用组、费用项、方案及其完整编辑上下文 |
+| `GET /api/schemes/{schemeId}/editor` | 加载单个方案及维度（因子、模板接口待后续补齐） |
+| `PUT /api/fee-groups/{groupNo}/draft` | 以费用组为边界保存草稿，使用组级 `rowVersion` |
+| `POST /api/fee-groups/{groupNo}/validate` | 执行必填费用、因子、模板、维度冲突等发布前校验 |
+| `POST /api/fee-groups/{groupNo}/publish` | 组粒度本地事务发布，支持立即或未来 `startTime` |
+| `GET /api/fee-groups/{groupNo}/versions?at=...` | 查询费用组指定时点或历史版本 |
+| `POST /api/schemes/{schemeId}/copy` | 复制历史/草稿内容生成新的 DRAFT 方案 |
+| `GET /api/schemes/{schemeId}/diff?compareTo=...` | 方案版本差异对比 |
+| `GET /api/factors` | 查询启用因子及其值类型、校验规则 |
+| `GET /api/templates?type=CALC|DISPLAY` | 查询可绑定模板版本 |
+| `PUT /api/schemes/{schemeId}/factor-values` | 全量保存方案因子赋值 |
+| `PUT /api/schemes/{schemeId}/templates` | 保存 CALC/DISPLAY 模板成对引用 |
+| `GET /api/schemes/{schemeId}/dimensions/coverage` | 查询维度覆盖图和冲突预检结果 |
+| `POST /api/import/schemes/validate` | 校验批量导入文件，不落库 |
+| `POST /api/import/schemes` | 导入为 DRAFT，不允许直接发布 |
+| `GET /api/export/schemes` | 导出草稿、当前生效集或历史时间线 |
+
+## 6. 下游分发与试算接口（规划中，不可调用）
 
 下列接口来自 [定价域模型设计](pricing-model.md)，但当前没有 HTTP Controller，不能用于联调或生产调用。
 
@@ -241,7 +300,12 @@
 
 对应 Dubbo 契约 `SchemeDeliveryService` 已定义，但 Provider 当前统一返回 `NOT_IMPLEMENTED`；在完成查询实现、AK/SK 鉴权、DTO 样例和兼容性测试前，不得对下游宣称可用。
 
-## 6. 文档维护规则
+## 7. 当前版本明确不做
+
+- 审批提交、审批通过、驳回、审批回调和 `PENDING_APPROVAL` 页面流程。
+- 在线计价、订单价格快照和下游消费状态回报。
+
+## 8. 文档维护规则
 
 1. 新增、删除或修改 HTTP/Dubbo 契约时，必须在同一变更中更新本文档及相关设计文档。
 2. 接口从“规划中”变为“已实现”前，至少补齐请求/响应字段、示例、认证方式、错误码和联调测试。

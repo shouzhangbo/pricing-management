@@ -7,4 +7,6 @@ public final class SchemeCommand {
     public record Update(Long schemeId, String schemeName, String remark, Integer rowVersion) { }
     public record CreateDimension(Long schemeId, String dimCode, String dimValues, String matchMode) { }
     public record UpdateDimension(Long dimensionId, String dimValues, String matchMode, Integer rowVersion) { }
+    public record FactorValue(String factorCode, String valueJson, Integer rowVersion) { }
+    public record TemplateBinding(String templateType, String templateCode, Integer templateVersion, String slotBindings, Integer rowVersion) { }
 }

@@ -11,6 +11,8 @@ import com.pricing.management.application.scheme.DeleteResult;
 import com.pricing.management.application.scheme.DimensionView;
 import com.pricing.management.application.scheme.PricingSchemeApplicationService;
 import com.pricing.management.application.scheme.SchemeView;
+import com.pricing.management.application.scheme.SchemeConfigurationService;
+import com.pricing.management.application.scheme.PublishApplicationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -22,6 +24,8 @@ import org.springframework.test.web.servlet.MockMvc;
 class SchemeManagementControllerTest {
     @Autowired private MockMvc mockMvc;
     @MockBean private PricingSchemeApplicationService service;
+    @MockBean private SchemeConfigurationService configuration;
+    @MockBean private PublishApplicationService publishing;
 
     @Test
     void shouldReturnSchemeDetail() throws Exception {

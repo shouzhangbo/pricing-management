@@ -119,7 +119,7 @@ publishGroup(groupId):
 | 双模板成对 | `uk_scheme_type(scheme_id,template_type)` | — | B1~B5 绑定校验矩阵 |
 | 组内费用顺序唯一 | `uk_group_seq(group_id,seq_no)` | — | 页面配置校验 |
 | 状态机合法跃迁 | 条件 UPDATE `WHERE status IN(前置态)` | CAS row_version | AbstractTransition 集中校验 |
-| 审批后置动作唯一 | `uk(biz_type,biz_id,action)` 于 approval_flow | 同事务 S 步 | — |
+| 发布批次关联 | `publish_batch_id` 于 pricing_scheme | 同事务写入 | 便于审计、回放和问题排查 |
 
 > 口诀：**能用唯一键的进 DDL，区间/集合类进事务复核，体验类前置预检**。三层互为冗余，任何单层失效不破坏正确性。
 

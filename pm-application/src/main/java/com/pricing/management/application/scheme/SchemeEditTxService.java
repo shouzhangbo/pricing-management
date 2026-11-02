@@ -9,6 +9,8 @@ import com.pricing.management.infrastructure.mapper.PricingSchemeDimensionMapper
 import com.pricing.management.infrastructure.mapper.PricingSchemeMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Draft mutations for a single scheme. Callers must hold the edit lock first; each method opens its transaction via the Spring proxy, so the lock wraps the transaction. */
 @Service
@@ -43,5 +45,17 @@ public class SchemeEditTxService {
     private PricingSchemeDO requireScheme(Long id) { PricingSchemeDO s=schemes.selectById(id); if(s==null) throw new BusinessException("NOT_FOUND","方案不存在"); return s; }
     private PricingSchemeDimensionDO requireDimension(Long id) { PricingSchemeDimensionDO d=dimensions.selectById(id); if(d==null) throw new BusinessException("NOT_FOUND","维度绑定不存在"); return d; }
     private void draft(PricingSchemeDO s) { if(!"DRAFT".equals(s.getStatus())) throw new BusinessException("CONFLICT","仅草稿方案允许编辑维度绑定"); }
-    private String jsonArray(String source) { try { JsonNode n=json.readTree(source); if(n==null||!n.isArray()||n.isEmpty()) throw new BusinessException("PARAM_ERROR","dimValues 必须是非空 JSON 数组"); return json.writeValueAsString(n); } catch(JsonProcessingException e) { throw new BusinessException("PARAM_ERROR","dimValues 必须是合法 JSON 数组"); } }
+    private String jsonArray(String source) {
+        try {
+            JsonNode n=json.readTree(source);
+            if(n==null||!n.isArray()||n.isEmpty()) throw new BusinessException("PARAM_ERROR","dimValues 必须是非空 JSON 数组");
+            Set<String> values = new HashSet<>();
+            for (JsonNode value : n) {
+                if (!value.isTextual() || value.asText().isBlank() || !values.add(value.asText()))
+                    throw new BusinessException("PARAM_ERROR","dimValues 必须是非空且不重复的字符串数组");
+            }
+            return json.writeValueAsString(n);
+        } catch (BusinessException e) { throw e;
+        } catch(JsonProcessingException e) { throw new BusinessException("PARAM_ERROR","dimValues 必须是合法 JSON 数组"); }
+    }
 }

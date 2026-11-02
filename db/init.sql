@@ -79,6 +79,7 @@ CREATE TABLE pricing_scheme (
   start_time DATETIME(3) NULL,
   end_time DATETIME(3) NULL,
   content_hash CHAR(64) NULL,
+  publish_batch_id VARCHAR(64) NULL,
   gray_flag TINYINT NOT NULL DEFAULT 0,
   published_by VARCHAR(64) NULL,
   published_at DATETIME(3) NULL,
@@ -89,7 +90,8 @@ CREATE TABLE pricing_scheme (
   row_version INT NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   KEY idx_fee_status (fee_id, status, start_time, end_time),
-  KEY idx_schedule_scan (status, start_time)
+  KEY idx_schedule_scan (status, start_time),
+  KEY idx_publish_batch (publish_batch_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='定价方案时间版本行';
 
 CREATE TABLE pricing_scheme_dimension (

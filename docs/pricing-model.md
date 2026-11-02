@@ -54,7 +54,7 @@
 
 ```
 版本行生命周期(每行 = 一个时间区间):
-DRAFT ─submit─▶ PENDING_APPROVAL ─approve─▶ PUBLISHED(start/end 已写入, 生效性完全由区间定义)
+DRAFT ─validate/publish─▶ PUBLISHED(start/end 已写入, 生效性完全由区间定义)
    │                    │reject→回DRAFT            │ 新版本发布时: 本行 end_time 被闭合(唯一允许的 UPDATE)
    └─CANCELLED(作废)                             └─区间滑过后自然成为"历史版本"(状态不变, 可回放/可回滚源)
 
@@ -68,7 +68,7 @@ D6: 不设"允许重叠按规则决胜"的柔性模式, 冲突即拒绝发布; "
 
 - 流转骨架抽象为 `AbstractTransition`（模板方法）：`checkPermission() → checkStateMachine() → validateAggregate() → doExecute()【钩子:各流转差异】 → writeAudit()`，全部在**同一本地事务**内执行（architecture §4.1）。
 - 定时发布 = 转正时 start 写未来时间；旧版 end 同事务提前闭合到同一时刻——**时钟即切换器，无生效 job**。
-- 提审门槛（组粒度）：`is_required=1` 的费用必须已配齐合法方案；非必填费用允许缺省（发布时组内校验报告留痕）。
+- 发布前门槛（组粒度）：`is_required=1` 的费用必须已配齐合法方案；非必填费用允许缺省（发布时组内校验报告留痕）。审批流为后置能力，不属于当前状态机。
 
 ---
 
